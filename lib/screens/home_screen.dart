@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../providers/matches_provider.dart';
 import 'history_screen.dart';
 import 'score_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/app_drawer.dart';
 
-/// Contenedor principal con navegación inferior (Marcador / Historial / Ajustes).
+/// Contenedor principal. Usa un menú lateral (hamburguesa) en vez de una
+/// barra inferior, para aprovechar el poco alto disponible en horizontal.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -15,50 +15,24 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _index = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _index = 1; // 0 = inicio/setup, 1 = historial, 2 = ajustes
 
+  void _openMenu() => _scaffoldKey.currentState?.openDrawer();
   void _goTo(int i) => setState(() => _index = i);
 
   @override
   Widget build(BuildContext context) {
-    final trashCount = context.watch<MatchesProvider>().trashCount;
     final screens = [
-      ScoreScreen(onOpenHistory: () => _goTo(1)),
-      const HistoryScreen(),
-      const SettingsScreen(),
+      ScoreScreen(onOpenMenu: _openMenu, onOpenHistory: () => _goTo(1)),
+      HistoryScreen(onOpenMenu: _openMenu),
+      SettingsScreen(onOpenMenu: _openMenu),
     ];
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: AppDrawer(currentIndex: _index, onSelect: _goTo),
       body: IndexedStack(index: _index, children: screens),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _goTo,
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.sports_volleyball_outlined),
-            selectedIcon: Icon(Icons.sports_volleyball),
-            label: 'Marcador',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: trashCount > 0,
-              label: Text('$trashCount'),
-              child: const Icon(Icons.history_outlined),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: trashCount > 0,
-              label: Text('$trashCount'),
-              child: const Icon(Icons.history),
-            ),
-            label: 'Historial',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Ajustes',
-          ),
-        ],
-      ),
     );
   }
 }

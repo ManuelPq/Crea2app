@@ -8,7 +8,9 @@ import '../theme/app_theme.dart';
 
 /// Historial de partidos + Papelera (para borrar tras el torneo).
 class HistoryScreen extends StatelessWidget {
-  const HistoryScreen({super.key});
+  const HistoryScreen({super.key, this.onOpenMenu});
+
+  final VoidCallback? onOpenMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +20,11 @@ class HistoryScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: 'Menú',
+            onPressed: onOpenMenu,
+          ),
           title: const Text('Historial de partidos',
               style: TextStyle(fontWeight: FontWeight.w800)),
           bottom: TabBar(

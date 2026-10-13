@@ -8,7 +8,9 @@ import '../theme/app_theme.dart';
 
 /// Ajustes por defecto del marcador (se aplican al configurar cada partido).
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.onOpenMenu});
+
+  final VoidCallback? onOpenMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +19,11 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          tooltip: 'Menú',
+          onPressed: onOpenMenu,
+        ),
         title:
             const Text('Ajustes', style: TextStyle(fontWeight: FontWeight.w800)),
       ),

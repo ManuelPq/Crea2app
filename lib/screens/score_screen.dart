@@ -13,9 +13,10 @@ import 'setup_screen.dart';
 
 /// Pantalla del marcador (horizontal, a pie de pista).
 class ScoreScreen extends StatefulWidget {
-  const ScoreScreen({super.key, this.onOpenHistory});
+  const ScoreScreen({super.key, this.onOpenHistory, this.onOpenMenu});
 
   final VoidCallback? onOpenHistory;
+  final VoidCallback? onOpenMenu;
 
   @override
   State<ScoreScreen> createState() => _ScoreScreenState();
@@ -340,17 +341,22 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   Widget _topBar(ScoreboardProvider score, bool dark) {
     final onColor = dark ? Colors.white : AppColors.ink;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       child: Row(
         children: [
-          const Icon(Icons.sports_volleyball, size: 26),
-          const SizedBox(width: 6),
+          // Menú hamburguesa
+          IconButton.filledTonal(
+            tooltip: 'Menú',
+            onPressed: widget.onOpenMenu,
+            icon: const Icon(Icons.menu),
+          ),
+          const SizedBox(width: 10),
           Flexible(
             child: Text(
               score.modeLabel,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: onColor,
               ),
