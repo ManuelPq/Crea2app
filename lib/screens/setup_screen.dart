@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/match_record.dart';
 import '../providers/scoreboard_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/bouncing_ball.dart';
 
 /// Pantalla previa: se elige tipo de partido, puntos, cambios y nombres.
 class SetupScreen extends StatefulWidget {
@@ -64,184 +65,190 @@ class _SetupScreenState extends State<SetupScreen> {
         child: SafeArea(
           child: Row(
             children: [
-              // Columna izquierda: pelota + título
+              // Columna izquierda: pelota + título (centrado)
               Expanded(
                 flex: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset('assets/images/pelota.png', width: 130),
-                      const SizedBox(height: 18),
+                      BouncingBall(size: 150),
+                      const SizedBox(height: 22),
                       const Text(
                         'Nuevo partido',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 40,
+                          fontSize: 44,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
                           height: 0.95,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Text(
                         'Configura el partido antes de empezar 🏐',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 17,
+                          color: Colors.white.withValues(alpha: 0.92),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              // Columna derecha: configuración
+              // Columna derecha: configuración (centrada)
               Expanded(
                 flex: 6,
                 child: Container(
                   margin: const EdgeInsets.fromLTRB(0, 14, 14, 14),
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 20),
                   decoration: BoxDecoration(
                     color: dark ? AppColors.darkSurface : Colors.white,
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: Row(
-                    children: [
-                      // Campos
-                      Expanded(
-                        flex: 5,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Center(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          _label('Equipos'),
+                          Row(
                             children: [
-                              _label('Equipos'),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _a,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Equipo A',
-                                        border: OutlineInputBorder(),
-                                        isDense: true,
-                                      ),
-                                    ),
+                              Expanded(
+                                child: TextField(
+                                  controller: _a,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 20, fontWeight: FontWeight.w700),
+                                  decoration: InputDecoration(
+                                    labelText: 'Equipo A',
+                                    labelStyle: const TextStyle(fontSize: 15),
+                                    hintText: 'Equipo A',
+                                    border: const OutlineInputBorder(),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 18),
                                   ),
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 8),
-                                    child: Text('VS',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w900)),
-                                  ),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _b,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Equipo B',
-                                        border: OutlineInputBorder(),
-                                        isDense: true,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              _label('Tipo de partido'),
-                              SegmentedButton<MatchType>(
-                                segments: const [
-                                  ButtonSegment(
-                                    value: MatchType.single,
-                                    label: Text('Único'),
-                                    icon: Icon(Icons.looks_one),
-                                  ),
-                                  ButtonSegment(
-                                    value: MatchType.bestOf3,
-                                    label: Text('Mejor de 3'),
-                                    icon: Icon(Icons.filter_3),
-                                  ),
-                                ],
-                                selected: {_setup.type},
-                                onSelectionChanged: (v) =>
-                                    setState(() => _setup = _setup.copyWith(type: v.first)),
-                              ),
-                              if (_setup.type == MatchType.bestOf3) ...[
-                                const SizedBox(height: 12),
-                                _numRow(
-                                  'Puntos del set decisivo',
-                                  _setup.decidingPoints,
-                                  5,
-                                  21,
-                                  (v) => setState(() => _setup =
-                                      _setup.copyWith(decidingPoints: v)),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 18),
-                      // Números grandes + botón
-                      Expanded(
-                        flex: 4,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _numRow(
-                                      'Puntos para finalizar',
-                                      _setup.targetPoints,
-                                      5,
-                                      30,
-                                      (v) => setState(() => _setup =
-                                          _setup.copyWith(targetPoints: v)),
-                                      big: true,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _numRow(
-                                      'Cambio de pista cada',
-                                      _setup.switchEvery,
-                                      0,
-                                      15,
-                                      (v) => setState(() => _setup =
-                                          _setup.copyWith(switchEvery: v)),
-                                      big: true,
-                                      suffix: _setup.switchEvery == 0
-                                          ? 'sin cambios'
-                                          : 'puntos',
-                                    ),
-                                  ],
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 54,
-                              child: FilledButton.icon(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppColors.sunsetDeep,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16)),
-                                ),
-                                onPressed: _start,
-                                icon: const Icon(Icons.play_arrow),
-                                label: const Text('EMPEZAR',
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 14),
+                                child: Text('VS',
                                     style: TextStyle(
                                         fontSize: 18,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1)),
+                                        fontWeight: FontWeight.w900)),
                               ),
+                              Expanded(
+                                child: TextField(
+                                  controller: _b,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      fontSize: 20, fontWeight: FontWeight.w700),
+                                  decoration: InputDecoration(
+                                    labelText: 'Equipo B',
+                                    labelStyle: const TextStyle(fontSize: 15),
+                                    hintText: 'Equipo B',
+                                    border: const OutlineInputBorder(),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 18),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 22),
+                          _label('Tipo de partido'),
+                          SegmentedButton<MatchType>(
+                            segments: const [
+                              ButtonSegment(
+                                value: MatchType.single,
+                                label: Text('Único'),
+                                icon: Icon(Icons.looks_one),
+                              ),
+                              ButtonSegment(
+                                value: MatchType.bestOf3,
+                                label: Text('Mejor de 3'),
+                                icon: Icon(Icons.filter_3),
+                              ),
+                            ],
+                            selected: {_setup.type},
+                            onSelectionChanged: (v) => setState(
+                                () => _setup = _setup.copyWith(type: v.first)),
+                          ),
+                          if (_setup.type == MatchType.bestOf3) ...[
+                            const SizedBox(height: 16),
+                            _numRow(
+                              'Puntos del set decisivo',
+                              _setup.decidingPoints,
+                              5,
+                              21,
+                              (v) => setState(() =>
+                                  _setup = _setup.copyWith(decidingPoints: v)),
                             ),
                           ],
-                        ),
+                          const SizedBox(height: 20),
+                          // Números grandes en fila (centrados)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _numRow(
+                                  'Puntos para finalizar',
+                                  _setup.targetPoints,
+                                  5,
+                                  30,
+                                  (v) => setState(() => _setup =
+                                      _setup.copyWith(targetPoints: v)),
+                                  big: true,
+                                  center: true,
+                                ),
+                              ),
+                              Container(
+                                  width: 1,
+                                  height: 70,
+                                  color: Theme.of(context).dividerColor),
+                              Expanded(
+                                child: _numRow(
+                                  'Cambio de pista cada',
+                                  _setup.switchEvery,
+                                  0,
+                                  15,
+                                  (v) => setState(() => _setup =
+                                      _setup.copyWith(switchEvery: v)),
+                                  big: true,
+                                  center: true,
+                                  suffix: _setup.switchEvery == 0
+                                      ? 'sin cambios'
+                                      : 'puntos',
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 58,
+                            child: FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.sunsetDeep,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16)),
+                              ),
+                              onPressed: _start,
+                              icon: const Icon(Icons.play_arrow),
+                              label: const Text('EMPEZAR',
+                                  style: TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1)),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -270,14 +277,20 @@ class _SetupScreenState extends State<SetupScreen> {
     ValueChanged<int> onChanged, {
     bool big = false,
     String suffix = 'puntos',
+    bool center = false,
   }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          center ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
         _label(title),
         Row(
+          mainAxisSize: center ? MainAxisSize.min : MainAxisSize.max,
+          mainAxisAlignment:
+              center ? MainAxisAlignment.center : MainAxisAlignment.start,
           children: [
-            _circleBtn(Icons.remove, value > min ? () => onChanged(value - 1) : null),
+            _circleBtn(
+                Icons.remove, value > min ? () => onChanged(value - 1) : null),
             Container(
               constraints: const BoxConstraints(minWidth: 74),
               alignment: Alignment.center,
@@ -286,7 +299,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   Text(
                     '$value',
                     style: TextStyle(
-                      fontSize: big ? 40 : 30,
+                      fontSize: big ? 44 : 30,
                       fontWeight: FontWeight.w900,
                       height: 1,
                     ),
@@ -302,7 +315,8 @@ class _SetupScreenState extends State<SetupScreen> {
                 ],
               ),
             ),
-            _circleBtn(Icons.add, value < max ? () => onChanged(value + 1) : null),
+            _circleBtn(
+                Icons.add, value < max ? () => onChanged(value + 1) : null),
           ],
         ),
       ],

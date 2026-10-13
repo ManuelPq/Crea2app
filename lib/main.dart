@@ -8,6 +8,7 @@ import 'providers/scoreboard_provider.dart';
 import 'screens/home_screen.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/orientation_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,7 +55,7 @@ class VoleyScoreApp extends StatelessWidget {
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: score.settings.darkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const HomeScreen(),
+            home: const OrientationGate(child: HomeScreen()),
           );
         },
       ),

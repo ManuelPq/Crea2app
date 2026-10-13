@@ -8,6 +8,7 @@ import '../providers/matches_provider.dart';
 import '../providers/scoreboard_provider.dart';
 import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/bouncing_ball.dart';
 import 'setup_screen.dart';
 
 /// Pantalla del marcador (horizontal, a pie de pista).
@@ -53,6 +54,11 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
 
   // ---------------- Puntos ----------------
   void _onPoint(String team, ScoreboardProvider score) {
+    // El banner de cambio de pista se cierra en cuanto se suma un punto.
+    if (_switchBanner) {
+      _switchTimer?.cancel();
+      setState(() => _switchBanner = false);
+    }
     final event = score.addPoint(team);
     if (score.settings.soundEnabled) {
       switch (event) {
@@ -115,7 +121,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
             const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
         title: Row(
           children: [
-            Image.asset('assets/images/pelota.png', width: 44),
+            BouncingBall(size: 48),
             const SizedBox(width: 12),
             const Expanded(
               child: Text('¡Partido terminado!',
@@ -292,6 +298,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                       children: [
                         Expanded(
                           child: _TeamPanel(
+                            label: 'A',
                             name: score.setup.teamA,
                             points: score.pointsA,
                             setsWon: score.setsWonA,
@@ -305,6 +312,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                         _centerStrip(score),
                         Expanded(
                           child: _TeamPanel(
+                            label: 'B',
                             name: score.setup.teamB,
                             points: score.pointsB,
                             setsWon: score.setsWonB,
@@ -416,12 +424,8 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Pelota (pic2.png)
-          Image.asset(
-            'assets/images/pelota.png',
-            width: 92,
-            height: 92,
-          ),
+          // Pelota (pic2.png) — animada mientras el partido está en juego
+          BouncingBall(size: 92, animate: !score.matchFinished),
           const SizedBox(height: 8),
           // Resultado de sets (solo mejor de 3)
           if (isMulti)
@@ -434,8 +438,8 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
               ),
             ),
           const SizedBox(height: 8),
-          // Aviso próximo cambio de pista
-          if (remaining != null)
+          // Aviso próximo cambio de pista (se oculta mientras sale el banner)
+          if (remaining != null && !_switchBanner)
             Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -528,6 +532,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
 /// Panel de un equipo con número gigante (~80% de la celda).
 class _TeamPanel extends StatelessWidget {
   const _TeamPanel({
+    required this.label,
     required this.name,
     required this.points,
     required this.setsWon,
@@ -538,6 +543,7 @@ class _TeamPanel extends StatelessWidget {
     required this.onEditName,
   });
 
+  final String label;
   final String name;
   final int points;
   final int setsWon;
@@ -578,7 +584,7 @@ class _TeamPanel extends StatelessWidget {
                   child: FractionallySizedBox(
                     widthFactor: 0.82,
                     heightFactor: 0.80,
-                    alignment: isLeft ? Alignment.center : Alignment.center,
+                    alignment: Alignment.center,
                     child: FittedBox(
                       fit: BoxFit.contain,
                       child: Text(
@@ -602,7 +608,21 @@ class _TeamPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Nombre (arriba) + sets
+                // Etiqueta grande A / B
+                Positioned(
+                  top: 14,
+                  left: isLeft ? null : 18,
+                  right: isLeft ? 18 : null,
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 46,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white.withValues(alpha: 0.35),
+                    ),
+                  ),
+                ),
+                // Nombre (arriba) + sets, en el lado exterior
                 Positioned(
                   top: 12,
                   left: isLeft ? 16 : null,
@@ -635,7 +655,7 @@ class _TeamPanel extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (isLeft && setsWon >= 0) ...[
+                          if (isLeft) ...[
                             const SizedBox(width: 8),
                             _dots(),
                           ],
