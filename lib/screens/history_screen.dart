@@ -13,7 +13,6 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final matches = context.watch<MatchesProvider>();
-    final dark = Theme.of(context).brightness == Brightness.dark;
 
     return DefaultTabController(
       length: 2,
@@ -50,11 +49,11 @@ class HistoryScreen extends StatelessWidget {
           children: [
             _MatchList(
               matches: matches.history,
-              emptyText: 'Aún no hay partidos guardados.\n¡Juega uno y guárdalo! 🏐',
-              dark: dark,
+              emptyText:
+                  'Aún no hay partidos guardados.\n¡Juega uno y se guardará solo! 🏐',
               isTrash: false,
             ),
-            _TrashView(dark: dark),
+            _TrashView(),
           ],
         ),
       ),
@@ -66,13 +65,11 @@ class _MatchList extends StatelessWidget {
   const _MatchList({
     required this.matches,
     required this.emptyText,
-    required this.dark,
     required this.isTrash,
   });
 
   final List<MatchRecord> matches;
   final String emptyText;
-  final bool dark;
   final bool isTrash;
 
   @override
@@ -84,7 +81,8 @@ class _MatchList extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.sports_volleyball, size: 64,
+              Icon(Icons.sports_volleyball,
+                  size: 64,
                   color: AppColors.sunsetOrange.withValues(alpha: 0.5)),
               const SizedBox(height: 16),
               Text(emptyText,
@@ -99,7 +97,8 @@ class _MatchList extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       itemCount: matches.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, i) => _MatchCard(match: matches[i], isTrash: isTrash),
+      itemBuilder: (context, i) =>
+          _MatchCard(match: matches[i], isTrash: isTrash),
     );
   }
 }
@@ -114,14 +113,19 @@ class _MatchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.read<MatchesProvider>();
     final dateFmt = DateFormat('dd/MM/yyyy · HH:mm');
-    final winner = match.winnerName;
+    final isMulti = match.type == MatchType.bestOf3;
+
+    final scoreText =
+        isMulti ? match.setsScore : match.finalScore;
+    final detailText = isMulti
+        ? match.setsDetail
+        : '${match.teamA} ${match.pointsA} - ${match.pointsB} ${match.teamB}';
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            // Trofeo / estado
             Container(
               width: 46,
               height: 46,
@@ -135,7 +139,6 @@ class _MatchCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 14),
-            // Info del partido
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,11 +160,12 @@ class _MatchCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.sunsetOrange.withValues(alpha: 0.15),
+                          color:
+                              AppColors.sunsetOrange.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          match.setsScore,
+                          scoreText,
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
                             color: AppColors.sunsetDeep,
@@ -171,10 +175,10 @@ class _MatchCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('🏆 Ganó: $winner',
+                  Text('🏆 Ganó: ${match.winnerName}',
                       style: const TextStyle(fontWeight: FontWeight.w600)),
                   Text(
-                    match.setsDetail,
+                    detailText,
                     style: TextStyle(
                       color: Theme.of(context)
                           .textTheme
@@ -199,19 +203,19 @@ class _MatchCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            // Acciones
-            if (!isTrash) ...[
+            if (!isTrash)
               IconButton(
                 tooltip: 'Mover a la papelera',
                 onPressed: () {
                   provider.moveToTrash(match.id);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Partido enviado a la papelera 🗑️')),
+                    const SnackBar(
+                        content: Text('Partido enviado a la papelera 🗑️')),
                   );
                 },
                 icon: const Icon(Icons.delete_outline),
-              ),
-            ] else ...[
+              )
+            else ...[
               IconButton(
                 tooltip: 'Restaurar',
                 onPressed: () => provider.restore(match.id),
@@ -220,7 +224,8 @@ class _MatchCard extends StatelessWidget {
               IconButton(
                 tooltip: 'Eliminar definitivamente',
                 onPressed: () => _confirmDelete(context, provider),
-                icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                icon:
+                    const Icon(Icons.delete_forever, color: Colors.redAccent),
               ),
             ],
           ],
@@ -235,7 +240,8 @@ class _MatchCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar definitivamente'),
-        content: Text('¿Eliminar "${match.teamA} vs ${match.teamB}" para siempre?'),
+        content:
+            Text('¿Eliminar "${match.teamA} vs ${match.teamB}" para siempre?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -259,9 +265,6 @@ class _MatchCard extends StatelessWidget {
 }
 
 class _TrashView extends StatelessWidget {
-  const _TrashView({required this.dark});
-  final bool dark;
-
   @override
   Widget build(BuildContext context) {
     final matches = context.watch<MatchesProvider>();
@@ -272,8 +275,8 @@ class _TrashView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.delete_outline, size: 64,
-                color: Colors.grey.withValues(alpha: 0.5)),
+            Icon(Icons.delete_outline,
+                size: 64, color: Colors.grey.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
             const Text('La papelera está vacía',
                 style: TextStyle(fontSize: 16)),
@@ -307,7 +310,6 @@ class _TrashView extends StatelessWidget {
           child: _MatchList(
             matches: trash,
             emptyText: '',
-            dark: dark,
             isTrash: true,
           ),
         ),

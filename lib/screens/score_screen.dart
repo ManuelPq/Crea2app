@@ -3,14 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/match_record.dart';
 import '../providers/matches_provider.dart';
 import '../providers/scoreboard_provider.dart';
 import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
+import 'setup_screen.dart';
 
-/// Pantalla del marcador. Pensada para usarse en horizontal, a pie de pista.
+/// Pantalla del marcador (horizontal, a pie de pista).
 class ScoreScreen extends StatefulWidget {
-  const ScoreScreen({super.key});
+  const ScoreScreen({super.key, this.onOpenHistory});
+
+  final VoidCallback? onOpenHistory;
 
   @override
   State<ScoreScreen> createState() => _ScoreScreenState();
@@ -19,12 +23,16 @@ class ScoreScreen extends StatefulWidget {
 class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   final SoundService _sound = const SoundService();
   Timer? _ticker;
+  bool _configuring = true; // al abrir, primero se configura el partido
+
+  // Banner flotante de cambio de pista
+  bool _switchBanner = false;
+  Timer? _switchTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Refresca el cronómetro cada segundo.
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -33,88 +41,195 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _ticker?.cancel();
+    _switchTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // Refresca el cronómetro cada segundo.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) setState(() {});
   }
 
+  // ---------------- Puntos ----------------
   void _onPoint(String team, ScoreboardProvider score) {
-    final result = score.addPoint(team);
+    final event = score.addPoint(team);
     if (score.settings.soundEnabled) {
-      if (result == 'match') {
-        _sound.matchWon();
-      } else if (result == 'set') {
-        _sound.setWon();
-      } else {
-        _sound.point();
+      switch (event) {
+        case PointEvent.matchWon:
+          _sound.matchWon();
+          break;
+        case PointEvent.setWon:
+          _sound.setWon();
+          break;
+        case PointEvent.courtSwitch:
+          _sound.courtSwitch();
+          break;
+        case PointEvent.none:
+          _sound.point();
+          break;
       }
     }
-    if (result == 'match') {
-      _onMatchFinished(score);
-    } else if (result == 'set') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text('¡Set para ${score.completedSets.last.wonByA ? score.teamA : score.teamB}!'),
-        ),
-      );
+    switch (event) {
+      case PointEvent.courtSwitch:
+        _showSwitchBanner();
+        break;
+      case PointEvent.matchWon:
+        _onMatchFinished(score);
+        break;
+      case PointEvent.setWon:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(milliseconds: 1200),
+            content: Text(
+                'Set para ${score.setsWonA > score.setsWonB ? score.setup.teamA : score.setup.teamB}'),
+          ),
+        );
+        break;
+      case PointEvent.none:
+        break;
     }
   }
 
+  void _showSwitchBanner() {
+    setState(() => _switchBanner = true);
+    _switchTimer?.cancel();
+    _switchTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _switchBanner = false);
+    });
+  }
+
+  // ---------------- Fin de partido ----------------
   Future<void> _onMatchFinished(ScoreboardProvider score) async {
     final record = score.buildRecord();
-    final save = await showDialog<bool>(
+    // Guardar automáticamente en el historial.
+    if (mounted) await context.read<MatchesProvider>().addMatch(record);
+    if (!mounted) return;
+
+    final wasDeciding = score.setup.type == MatchType.bestOf3;
+    final action = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('¡Partido terminado! 🏐'),
+        insetPadding:
+            const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        title: Row(
+          children: [
+            Image.asset('assets/images/pelota.png', width: 44),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('¡Partido terminado!',
+                  style: TextStyle(fontWeight: FontWeight.w900)),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Ganador: ${record.winnerName}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(record.teamA,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                ),
+                Expanded(
+                  child: Text(record.teamB,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            Text('Sets: ${record.setsScore}'),
-            Text('Puntos: ${record.setsDetail}'),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('${record.pointsA}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 46, fontWeight: FontWeight.w900)),
+                ),
+                Expanded(
+                  child: Text('${record.pointsB}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 46, fontWeight: FontWeight.w900)),
+                ),
+              ],
+            ),
+            if (wasDeciding) ...[
+              const SizedBox(height: 6),
+              Text('Sets: ${record.setsScore}  (${record.setsDetail})',
+                  textAlign: TextAlign.center),
+            ],
             const SizedBox(height: 12),
-            const Text('¿Guardar en el historial?'),
+            Center(
+              child: Text('🏆 Ganó ${record.winnerName}',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(height: 6),
+            Center(
+              child: Text(
+                'Resultado: ${record.teamA} ${record.pointsA} - ${record.pointsB} ${record.teamB}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Center(
+              child: Text('Guardado en el historial ✅',
+                  style: TextStyle(fontSize: 13)),
+            ),
           ],
         ),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('No'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Guardar'),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => Navigator.pop(ctx, 'history'),
+                icon: const Icon(Icons.history),
+                label: const Text('Ver historial'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.pop(ctx, 'config'),
+                icon: const Icon(Icons.tune),
+                label: const Text('Nueva configuración'),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.sunsetDeep),
+                onPressed: () => Navigator.pop(ctx, 'rematch'),
+                icon: const Icon(Icons.replay),
+                label: const Text('Revancha (mismo)'),
+              ),
+            ],
           ),
         ],
       ),
     );
 
-    if (save == true && mounted) {
-      await context.read<MatchesProvider>().addMatch(record);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Partido guardado en el historial ✅')),
-        );
-      }
+    if (!mounted) return;
+    if (action == 'history') {
+      score.reset();
+      widget.onOpenHistory?.call();
+    } else if (action == 'config') {
+      score.reset();
+      setState(() => _configuring = true);
+    } else {
+      // Revancha con la misma configuración
+      score.startMatch(score.setup);
     }
-    if (mounted) score.resetMatch();
   }
 
   Future<void> _editNames(ScoreboardProvider score) async {
-    final a = TextEditingController(text: score.teamA);
-    final b = TextEditingController(text: score.teamB);
+    final a = TextEditingController(text: score.setup.teamA);
+    final b = TextEditingController(text: score.setup.teamB);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -123,58 +238,38 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: a,
-              decoration: const InputDecoration(labelText: 'Equipo A (izquierda)'),
-            ),
+                controller: a,
+                decoration: const InputDecoration(labelText: 'Equipo A')),
             const SizedBox(height: 12),
             TextField(
-              controller: b,
-              decoration: const InputDecoration(labelText: 'Equipo B (derecha)'),
-            ),
+                controller: b,
+                decoration: const InputDecoration(labelText: 'Equipo B')),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Guardar'),
-          ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Guardar')),
         ],
       ),
     );
-    if (ok == true) score.setNames(a.text, b.text);
+    if (ok == true) {
+      score.updateNames(a.text, b.text);
+    }
   }
 
-  Future<void> _newMatch(ScoreboardProvider score) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Nuevo partido'),
-        content: const Text('¿Reiniciar el marcador? Se perderán los puntos actuales.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reiniciar'),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true) score.resetMatch();
-  }
-
+  // ---------------- Build ----------------
   @override
   Widget build(BuildContext context) {
+    if (_configuring) {
+      return SetupScreen(onStart: () => setState(() => _configuring = false));
+    }
     final score = context.watch<ScoreboardProvider>();
     final dark = Theme.of(context).brightness == Brightness.dark;
 
-    // Refresco visual del cronómetro una vez por segundo.
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -187,50 +282,46 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
               : AppGradients.sunset,
         ),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _topBar(score, dark),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _TeamPanel(
-                        name: score.sidesSwapped ? score.teamB : score.teamA,
-                        points: score.sidesSwapped ? score.pointsB : score.pointsA,
-                        setsWon:
-                            score.sidesSwapped ? score.setsWonB : score.setsWonA,
-                        gradient: score.sidesSwapped
-                            ? AppGradients.teamB
-                            : AppGradients.teamA,
-                        onAdd: () => _onPoint(score.sidesSwapped ? 'b' : 'a', score),
-                        onRemove: () => score.removePoint(
-                            score.sidesSwapped ? 'b' : 'a'),
-                        onEditName: () => _editNames(score),
-                        align: Alignment.centerLeft,
-                        dark: dark,
-                      ),
+              Column(
+                children: [
+                  _topBar(score, dark),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _TeamPanel(
+                            name: score.setup.teamA,
+                            points: score.pointsA,
+                            setsWon: score.setsWonA,
+                            gradient: AppGradients.teamA,
+                            align: Alignment.centerLeft,
+                            onAdd: () => _onPoint('a', score),
+                            onRemove: () => score.removePoint('a'),
+                            onEditName: () => _editNames(score),
+                          ),
+                        ),
+                        _centerStrip(score),
+                        Expanded(
+                          child: _TeamPanel(
+                            name: score.setup.teamB,
+                            points: score.pointsB,
+                            setsWon: score.setsWonB,
+                            gradient: AppGradients.teamB,
+                            align: Alignment.centerRight,
+                            onAdd: () => _onPoint('b', score),
+                            onRemove: () => score.removePoint('b'),
+                            onEditName: () => _editNames(score),
+                          ),
+                        ),
+                      ],
                     ),
-                    _centerStrip(score, dark),
-                    Expanded(
-                      child: _TeamPanel(
-                        name: score.sidesSwapped ? score.teamA : score.teamB,
-                        points: score.sidesSwapped ? score.pointsA : score.pointsB,
-                        setsWon:
-                            score.sidesSwapped ? score.setsWonA : score.setsWonB,
-                        gradient: score.sidesSwapped
-                            ? AppGradients.teamA
-                            : AppGradients.teamB,
-                        onAdd: () => _onPoint(score.sidesSwapped ? 'a' : 'b', score),
-                        onRemove: () => score.removePoint(
-                            score.sidesSwapped ? 'a' : 'b'),
-                        onEditName: () => _editNames(score),
-                        align: Alignment.centerRight,
-                        dark: dark,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+              // Banner flotante de cambio de pista
+              _switchBannerOverlay(score),
             ],
           ),
         ),
@@ -241,25 +332,25 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   Widget _topBar(ScoreboardProvider score, bool dark) {
     final onColor = dark ? Colors.white : AppColors.ink;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
         children: [
-          const Icon(Icons.sports_volleyball, size: 30),
-          const SizedBox(width: 8),
-          Text(
-            'Voley Score',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: onColor,
-              letterSpacing: 0.3,
+          const Icon(Icons.sports_volleyball, size: 26),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              score.modeLabel,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: onColor,
+              ),
             ),
           ),
-          const SizedBox(width: 16),
-          _pill(score.currentSetLabel, onColor),
           const Spacer(),
           _timerChip(score),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           IconButton.filledTonal(
             tooltip: 'Deshacer',
             onPressed: score.canUndo ? score.undo : null,
@@ -267,25 +358,11 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(width: 6),
           IconButton.filledTonal(
-            tooltip: 'Reiniciar partido',
-            onPressed: () => _newMatch(score),
-            icon: const Icon(Icons.restart_alt),
+            tooltip: 'Nueva configuración',
+            onPressed: () => setState(() => _configuring = true),
+            icon: const Icon(Icons.tune),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _pill(String text, Color onColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: onColor, fontWeight: FontWeight.w700, fontSize: 14),
       ),
     );
   }
@@ -298,7 +375,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
       onTap: score.toggleTimer,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.30),
           borderRadius: BorderRadius.circular(20),
@@ -306,17 +383,19 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
         child: Row(
           children: [
             Icon(
-              score.timerRunning ? Icons.pause_circle_filled : Icons.play_circle_fill,
+              score.timerRunning
+                  ? Icons.pause_circle_filled
+                  : Icons.play_circle_fill,
               color: Colors.white,
-              size: 20,
+              size: 18,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 5),
             Text(
               '$mm:$ss',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: 15,
                 fontFeatures: [FontFeature.tabularFigures()],
               ),
             ),
@@ -326,69 +405,151 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _centerStrip(ScoreboardProvider score, bool dark) {
-    final onColor = dark ? Colors.white70 : AppColors.ink;
+  /// Columna central con la pelota, resultado y aviso de próximo cambio.
+  Widget _centerStrip(ScoreboardProvider score) {
+    final next = score.nextSwitchAt;
+    final remaining = next == null ? null : next - score.totalPoints;
+    final isMulti = score.setup.type == MatchType.bestOf3;
     return Container(
-      width: 96,
+      width: 132,
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton.filled(
-            tooltip: 'Intercambiar lados',
-            onPressed: score.swapSides,
-            icon: const Icon(Icons.swap_horiz),
+          // Pelota (pic2.png)
+          Image.asset(
+            'assets/images/pelota.png',
+            width: 92,
+            height: 92,
           ),
-          const SizedBox(height: 14),
-          Text(
-            '${score.setsWonA} - ${score.setsWonB}',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              color: onColor,
+          const SizedBox(height: 8),
+          // Resultado de sets (solo mejor de 3)
+          if (isMulti)
+            Text(
+              '${score.setsWonA} - ${score.setsWonB}',
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'SETS',
-            style: TextStyle(
-              fontSize: 11,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w700,
-              color: onColor.withValues(alpha: 0.7),
+          const SizedBox(height: 8),
+          // Aviso próximo cambio de pista
+          if (remaining != null)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.30),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                children: [
+                  const Text('CAMBIO DE PISTA',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          letterSpacing: 1,
+                          fontWeight: FontWeight.w800)),
+                  Text(
+                    'en $remaining ${remaining == 1 ? "punto" : "puntos"}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _switchBannerOverlay(ScoreboardProvider score) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedOpacity(
+          opacity: _switchBanner ? 1 : 0,
+          duration: const Duration(milliseconds: 220),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 22),
+              decoration: BoxDecoration(
+                gradient: AppGradients.beach,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.swap_horiz, color: Colors.white, size: 46),
+                      Icon(Icons.swap_horiz, color: Colors.white, size: 46),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '¡CAMBIO DE PISTA!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${score.totalPoints} puntos · cambiad de lado',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
+/// Panel de un equipo con número gigante (~80% de la celda).
 class _TeamPanel extends StatelessWidget {
   const _TeamPanel({
     required this.name,
     required this.points,
     required this.setsWon,
     required this.gradient,
+    required this.align,
     required this.onAdd,
     required this.onRemove,
     required this.onEditName,
-    required this.align,
-    required this.dark,
   });
 
   final String name;
   final int points;
   final int setsWon;
   final Gradient gradient;
+  final Alignment align;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
   final VoidCallback onEditName;
-  final Alignment align;
-  final bool dark;
 
   @override
   Widget build(BuildContext context) {
+    final isLeft = align == Alignment.centerLeft;
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Material(
@@ -400,8 +561,8 @@ class _TeamPanel extends StatelessWidget {
             borderRadius: BorderRadius.circular(26),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
-                blurRadius: 16,
+                color: Colors.black.withValues(alpha: 0.20),
+                blurRadius: 18,
                 offset: const Offset(0, 6),
               ),
             ],
@@ -410,80 +571,93 @@ class _TeamPanel extends StatelessWidget {
             borderRadius: BorderRadius.circular(26),
             onTap: onAdd,
             onLongPress: onRemove,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              child: Column(
-                crossAxisAlignment: align == Alignment.centerLeft
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end,
-                children: [
-                  // Nombre + sets ganados
-                  GestureDetector(
-                    onTap: onEditName,
-                    child: Row(
-                      mainAxisAlignment: align == Alignment.centerLeft
-                          ? MainAxisAlignment.start
-                          : MainAxisAlignment.end,
-                      children: [
-                        if (align == Alignment.centerLeft)
-                          _nameBlock()
-                        else
-                          _setDots(),
-                        if (align == Alignment.centerLeft)
-                          const SizedBox(width: 10),
-                        if (align == Alignment.centerLeft) _setDots(),
-                        if (align == Alignment.centerRight)
-                          const SizedBox(width: 10),
-                        if (align == Alignment.centerRight) _nameBlock(),
-                      ],
+            child: Stack(
+              children: [
+                // Número gigante ocupando ~80% de la celda
+                Positioned.fill(
+                  child: FractionallySizedBox(
+                    widthFactor: 0.82,
+                    heightFactor: 0.80,
+                    alignment: isLeft ? Alignment.center : Alignment.center,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: Text(
+                        '$points',
+                        style: const TextStyle(
+                          fontSize: 600,
+                          height: 0.82,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          leadingDistribution:
+                              TextLeadingDistribution.even,
+                          shadows: [
+                            Shadow(
+                              color: Color(0x55000000),
+                              blurRadius: 18,
+                              offset: Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  // Número gigante
-                  Align(
-                    alignment: align == Alignment.centerLeft
-                        ? Alignment.centerLeft
-                        : Alignment.centerRight,
-                    child: Text(
-                      '$points',
-                      style: const TextStyle(
-                        fontSize: 128,
-                        height: 0.9,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                        shadows: [
-                          Shadow(
-                            color: Color(0x44000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 3),
+                ),
+                // Nombre (arriba) + sets
+                Positioned(
+                  top: 12,
+                  left: isLeft ? 16 : null,
+                  right: isLeft ? null : 16,
+                  child: GestureDetector(
+                    onTap: onEditName,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!isLeft && setsWon > 0) ...[
+                            _dots(),
+                            const SizedBox(width: 8),
+                          ],
+                          Flexible(
+                            child: Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
+                          if (isLeft && setsWon >= 0) ...[
+                            const SizedBox(width: 8),
+                            _dots(),
+                          ],
                         ],
                       ),
                     ),
                   ),
-                  const Spacer(),
-                  // Botones -1  /  +1
-                  Row(
-                    mainAxisAlignment: align == Alignment.centerLeft
-                        ? MainAxisAlignment.start
-                        : MainAxisAlignment.end,
+                ),
+                // Botones -1 / +1 (abajo)
+                Positioned(
+                  bottom: 12,
+                  left: isLeft ? 16 : null,
+                  right: isLeft ? null : 16,
+                  child: Row(
                     children: [
-                      _roundBtn(Icons.remove, onRemove, 'Restar punto'),
-                      const SizedBox(width: 10),
-                      _roundBtn(Icons.add, onAdd, 'Sumar punto'),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Toca para +1',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      _roundBtn(Icons.remove, onRemove, 'Restar'),
+                      const SizedBox(width: 8),
+                      _roundBtn(Icons.add, onAdd, 'Sumar +1'),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -491,48 +665,19 @@ class _TeamPanel extends StatelessWidget {
     );
   }
 
-  Widget _nameBlock() {
-    return Flexible(
-      child: Column(
-        crossAxisAlignment: align == Alignment.centerLeft
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.end,
-        children: [
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-          Text(
-            'Toca el nombre para editar',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.75),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _setDots() {
+  Widget _dots() {
     return Row(
       children: [
         for (int i = 0; i < 2; i++)
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            width: 16,
-            height: 16,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            width: 12,
+            height: 12,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: i < setsWon
                   ? Colors.white
-                  : Colors.white.withValues(alpha: 0.30),
+                  : Colors.white.withValues(alpha: 0.35),
             ),
           ),
       ],
@@ -540,18 +685,15 @@ class _TeamPanel extends StatelessWidget {
   }
 
   Widget _roundBtn(IconData icon, VoidCallback onTap, String tip) {
-    return Tooltip(
-      message: tip,
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.25),
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Icon(icon, color: Colors.white, size: 26),
-          ),
+    return Material(
+      color: Colors.white.withValues(alpha: 0.28),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Icon(icon, color: Colors.white, size: 24),
         ),
       ),
     );

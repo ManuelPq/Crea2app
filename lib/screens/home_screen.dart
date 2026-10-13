@@ -17,11 +17,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
 
+  void _goTo(int i) => setState(() => _index = i);
+
   @override
   Widget build(BuildContext context) {
     final trashCount = context.watch<MatchesProvider>().trashCount;
     final screens = [
-      const ScoreScreen(),
+      ScoreScreen(onOpenHistory: () => _goTo(1)),
       const HistoryScreen(),
       const SettingsScreen(),
     ];
@@ -30,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(index: _index, children: screens),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: _goTo,
         destinations: [
           const NavigationDestination(
             icon: Icon(Icons.sports_volleyball_outlined),

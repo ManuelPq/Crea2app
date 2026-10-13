@@ -15,6 +15,11 @@ class SoundService {
     HapticFeedback.selectionClick();
   }
 
+  void courtSwitch() {
+    SystemSound.play(SystemSoundType.alert);
+    HapticFeedback.mediumImpact();
+  }
+
   void setWon() {
     SystemSound.play(SystemSoundType.alert);
     HapticFeedback.mediumImpact();

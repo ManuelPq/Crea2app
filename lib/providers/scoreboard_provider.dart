@@ -3,13 +3,16 @@ import 'package:uuid/uuid.dart';
 
 import '../models/match_record.dart';
 
-/// Estado interno para poder deshacer (snapshot).
+/// Resultado de sumar un punto, para que la UI reaccione.
+enum PointEvent { none, courtSwitch, setWon, matchWon }
+
 class _Snapshot {
   final int pointsA;
   final int pointsB;
   final int setsWonA;
   final int setsWonB;
   final List<GameSet> completedSets;
+  final bool courtSwitched;
 
   _Snapshot({
     required this.pointsA,
@@ -17,70 +20,88 @@ class _Snapshot {
     required this.setsWonA,
     required this.setsWonB,
     required this.completedSets,
+    required this.courtSwitched,
   });
 }
 
-/// Lógica completa del marcador de vóley.
+/// Lógica del marcador de vóley playa.
+/// Por defecto: partido único a 21 puntos, con cambio de pista cada 7.
 class ScoreboardProvider extends ChangeNotifier {
-  ScoreboardProvider();
+  GameSetup setup = const GameSetup();
 
-  // Nombres
-  String teamA = 'Equipo A';
-  String teamB = 'Equipo B';
-
-  // Puntuación del set actual
   int pointsA = 0;
   int pointsB = 0;
-
-  // Sets ganados
   int setsWonA = 0;
   int setsWonB = 0;
-
-  // Sets completados
   final List<GameSet> completedSets = [];
 
-  // Historial para deshacer
+  bool matchFinished = false;
+  bool courtSwitched = false; // el equipo A ha cambiado de lado por última vez
+
   final List<_Snapshot> _undoStack = [];
 
-  // Ajustes
-  AppSettings settings = const AppSettings();
-
-  // Cronómetro
   final Stopwatch _stopwatch = Stopwatch();
   bool timerRunning = false;
 
-  // Partido finalizado pendiente de guardar
-  bool matchFinished = false;
+  AppSettings settings = const AppSettings();
 
-  // Cambio de lados (interfaz)
-  bool sidesSwapped = false;
-
-  // ---------- Configuración ----------
+  // ---------- Config ----------
   void applySettings(AppSettings s) {
     settings = s;
     notifyListeners();
   }
 
-  void setNames(String a, String b) {
-    teamA = a.trim().isEmpty ? 'Equipo A' : a.trim();
-    teamB = b.trim().isEmpty ? 'Equipo B' : b.trim();
+  /// Actualiza los nombres sin reiniciar el marcador.
+  void updateNames(String a, String b) {
+    setup = setup.copyWith(
+      teamA: a.trim().isEmpty ? 'Equipo A' : a.trim(),
+      teamB: b.trim().isEmpty ? 'Equipo B' : b.trim(),
+    );
     notifyListeners();
   }
 
-  // ---------- Objetivo del set actual ----------
-  /// En vóley playa: sets a 21 y set decisivo (3º) a 15.
-  int get currentSetTarget {
-    final isDeciding = completedSets.length >= 2;
-    if (isDeciding && settings.tieBreakTo15) return settings.decidingSetPoints;
-    return settings.pointsPerSet;
+  void startMatch(GameSetup s) {    setup = s;
+    pointsA = 0;
+    pointsB = 0;
+    setsWonA = 0;
+    setsWonB = 0;
+    completedSets.clear();
+    _undoStack.clear();
+    matchFinished = false;
+    courtSwitched = false;
+    _stopwatch.reset();
+    _stopwatch.start();
+    timerRunning = true;
+    notifyListeners();
   }
 
-  String get currentSetLabel {
-    final n = completedSets.length + 1;
-    final isDeciding = completedSets.length >= 2;
-    if (isDeciding) return 'Set $n (decisivo a $currentSetTarget)';
-    return 'Set $n · a $currentSetTarget';
+  // ---------- Objetivo actual ----------
+  int get currentTarget {
+    if (setup.type == MatchType.bestOf3 && completedSets.length >= 2) {
+      return setup.decidingPoints;
+    }
+    return setup.targetPoints;
   }
+
+  String get modeLabel {
+    if (setup.type == MatchType.single) {
+      return 'Partido único · a ${setup.targetPoints} · cambios cada ${setup.switchEvery}';
+    }
+    final n = completedSets.length + 1;
+    return 'Al mejor de 3 · Set $n (a $currentTarget) · cambios cada ${setup.switchEvery}';
+  }
+
+  int get totalPoints => pointsA + pointsB;
+
+  /// Próximo punto en el que habrá cambio de pista (o null si no aplica).
+  int? get nextSwitchAt {
+    if (setup.switchEvery <= 0) return null;
+    final t = totalPoints;
+    return ((t ~/ setup.switchEvery) + 1) * setup.switchEvery;
+  }
+
+  bool get canUndo => _undoStack.isNotEmpty;
+  Duration get elapsed => _stopwatch.elapsed;
 
   // ---------- Puntos ----------
   void _pushUndo() {
@@ -90,59 +111,67 @@ class ScoreboardProvider extends ChangeNotifier {
       setsWonA: setsWonA,
       setsWonB: setsWonB,
       completedSets: List<GameSet>.from(completedSets),
+      courtSwitched: courtSwitched,
     ));
-    if (_undoStack.length > 100) _undoStack.removeAt(0);
+    if (_undoStack.length > 200) _undoStack.removeAt(0);
   }
 
-  bool get canUndo => _undoStack.isNotEmpty;
-
-  /// Devuelve true si se ganó el set / partido (para que la UI reaccione).
-  bool _checkSetWin() {
-    final target = currentSetTarget;
-    final aWon = pointsA >= target && (pointsA - pointsB) >= 2;
-    final bWon = pointsB >= target && (pointsB - pointsA) >= 2;
-    if (!aWon && !bWon) return false;
-
-    completedSets.add(GameSet(pointsA: pointsA, pointsB: pointsB));
-    if (aWon) {
-      setsWonA++;
-    } else {
-      setsWonB++;
-    }
-    pointsA = 0;
-    pointsB = 0;
-
-    // ¿Partido terminado? (mejor de 3)
-    if (setsWonA == 2 || setsWonB == 2) {
-      matchFinished = true;
-      _stopwatch.stop();
-      timerRunning = false;
-    }
-    return true;
-  }
-
-  /// Añade un punto. 'a' = equipo A, 'b' = equipo B.
-  /// Devuelve 'set' si se cerró un set, 'match' si se acabó el partido, o null.
-  String? addPoint(String team) {
-    if (matchFinished) return null;
+  PointEvent addPoint(String team) {
+    if (matchFinished) return PointEvent.none;
     _pushUndo();
+
     if (team == 'a') {
       pointsA++;
     } else {
       pointsB++;
     }
-    if (!_stopwatch.isRunning) {
-      _stopwatch.start();
-      timerRunning = true;
+
+    final target = currentTarget;
+    final aWonSet = pointsA >= target && (pointsA - pointsB) >= 2;
+    final bWonSet = pointsB >= target && (pointsB - pointsA) >= 2;
+
+    // ¿Fin de set / partido?
+    if (aWonSet || bWonSet) {
+      if (setup.type == MatchType.single) {
+        matchFinished = true;
+        _stopwatch.stop();
+        timerRunning = false;
+        notifyListeners();
+        return PointEvent.matchWon;
+      }
+      // bestOf3: cerrar set
+      completedSets.add(GameSet(pointsA: pointsA, pointsB: pointsB));
+      if (aWonSet) {
+        setsWonA++;
+      } else {
+        setsWonB++;
+      }
+      pointsA = 0;
+      pointsB = 0;
+      if (setsWonA == 2 || setsWonB == 2) {
+        matchFinished = true;
+        _stopwatch.stop();
+        timerRunning = false;
+        notifyListeners();
+        return PointEvent.matchWon;
+      }
+      notifyListeners();
+      return PointEvent.setWon;
     }
-    final closed = _checkSetWin();
+
+    // ¿Cambio de pista? Cada vez que el total es múltiplo de switchEvery.
+    if (setup.switchEvery > 0 && totalPoints % setup.switchEvery == 0) {
+      courtSwitched = !courtSwitched;
+      notifyListeners();
+      return PointEvent.courtSwitch;
+    }
+
     notifyListeners();
-    if (matchFinished) return 'match';
-    if (closed) return 'set';
-    return null;
+    return PointEvent.none;
   }
 
   void removePoint(String team) {
+    if (matchFinished) return;
     _pushUndo();
     if (team == 'a' && pointsA > 0) pointsA--;
     if (team == 'b' && pointsB > 0) pointsB--;
@@ -159,13 +188,12 @@ class ScoreboardProvider extends ChangeNotifier {
     completedSets
       ..clear()
       ..addAll(s.completedSets);
+    courtSwitched = s.courtSwitched;
     matchFinished = false;
     notifyListeners();
   }
 
   // ---------- Cronómetro ----------
-  Duration get elapsed => _stopwatch.elapsed;
-
   void toggleTimer() {
     if (_stopwatch.isRunning) {
       _stopwatch.stop();
@@ -177,27 +205,26 @@ class ScoreboardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void swapSides() {
-    sidesSwapped = !sidesSwapped;
-    notifyListeners();
-  }
-
-  // ---------- Crear registro del partido ----------
+  // ---------- Registro ----------
   MatchRecord buildRecord() {
     return MatchRecord(
       id: const Uuid().v4(),
-      teamA: teamA,
-      teamB: teamB,
-      sets: List<GameSet>.from(completedSets),
+      teamA: setup.teamA,
+      teamB: setup.teamB,
+      pointsA: pointsA,
+      pointsB: pointsB,
       setsWonA: setsWonA,
       setsWonB: setsWonB,
+      completedSets: List<GameSet>.from(completedSets),
+      type: setup.type,
+      targetPoints: setup.targetPoints,
+      switchEvery: setup.switchEvery,
       playedAt: DateTime.now(),
       duration: _stopwatch.elapsed,
     );
   }
 
-  // ---------- Reiniciar ----------
-  void resetMatch({bool keepNames = true}) {
+  void reset() {
     pointsA = 0;
     pointsB = 0;
     setsWonA = 0;
@@ -205,12 +232,9 @@ class ScoreboardProvider extends ChangeNotifier {
     completedSets.clear();
     _undoStack.clear();
     matchFinished = false;
+    courtSwitched = false;
     _stopwatch.reset();
     timerRunning = false;
-    if (!keepNames) {
-      teamA = 'Equipo A';
-      teamB = 'Equipo B';
-    }
     notifyListeners();
   }
 }

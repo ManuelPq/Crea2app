@@ -6,7 +6,7 @@ import '../providers/scoreboard_provider.dart';
 import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 
-/// Ajustes del marcador: puntos por set, tie-break, sonido, modo oscuro.
+/// Ajustes por defecto del marcador (se aplican al configurar cada partido).
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -17,58 +17,83 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ajustes',
-            style: TextStyle(fontWeight: FontWeight.w800)),
+        title:
+            const Text('Ajustes', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _section('Formato del partido'),
+          _section('Valores por defecto del partido'),
+          Text(
+            'En vóley playa lo habitual es: 21 puntos y cambio de pista cada 7. '
+            'Estos valores se cargan al crear un partido (puedes cambiarlos en cada uno).',
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodySmall?.color,
+            ),
+          ),
+          const SizedBox(height: 10),
           Card(
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.flag, color: AppColors.sunsetDeep),
-                  title: const Text('Puntos por set'),
-                  subtitle: Text('Al mejor de 3 · sets a ${s.pointsPerSet}'),
-                  trailing: _stepper(
-                    value: s.pointsPerSet,
-                    min: 5,
-                    max: 30,
-                    onChanged: (v) => _apply(
-                      context,
-                      s.copyWith(pointsPerSet: v),
-                    ),
+                  leading: const Icon(Icons.style, color: AppColors.sunsetDeep),
+                  title: const Text('Tipo de partido'),
+                  subtitle: Text(s.defaultType.label),
+                  trailing: SegmentedButton<MatchType>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                          value: MatchType.single, label: Text('Único')),
+                      ButtonSegment(
+                          value: MatchType.bestOf3, label: Text('Mejor de 3')),
+                    ],
+                    selected: {s.defaultType},
+                    onSelectionChanged: (v) =>
+                        _apply(context, s.copyWith(defaultType: v.first)),
                   ),
                 ),
                 const Divider(height: 1),
-                SwitchListTile(
-                  secondary:
-                      const Icon(Icons.emoji_events, color: AppColors.sunsetDeep),
-                  title: const Text('Set decisivo más corto'),
-                  subtitle: Text(
-                      'El 3er set se juega a ${s.decidingSetPoints} puntos'),
-                  value: s.tieBreakTo15,
-                  onChanged: (v) =>
-                      _apply(context, s.copyWith(tieBreakTo15: v)),
-                ),
-                if (s.tieBreakTo15) ...[
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.timer,
-                        color: AppColors.sunsetDeep),
-                    title: const Text('Puntos del set decisivo'),
-                    trailing: _stepper(
-                      value: s.decidingSetPoints,
-                      min: 5,
-                      max: 21,
-                      onChanged: (v) => _apply(
-                        context,
-                        s.copyWith(decidingSetPoints: v),
-                      ),
-                    ),
+                ListTile(
+                  leading: const Icon(Icons.flag, color: AppColors.sunsetDeep),
+                  title: const Text('Puntos para finalizar'),
+                  subtitle: Text('Por defecto: ${s.defaultTargetPoints}'),
+                  trailing: _stepper(
+                    value: s.defaultTargetPoints,
+                    min: 5,
+                    max: 30,
+                    onChanged: (v) =>
+                        _apply(context, s.copyWith(defaultTargetPoints: v)),
                   ),
-                ],
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.swap_horiz,
+                      color: AppColors.sunsetDeep),
+                  title: const Text('Cambio de pista cada'),
+                  subtitle: Text(s.defaultSwitchEvery == 0
+                      ? 'Sin cambios'
+                      : 'Cada ${s.defaultSwitchEvery} puntos'),
+                  trailing: _stepper(
+                    value: s.defaultSwitchEvery,
+                    min: 0,
+                    max: 15,
+                    onChanged: (v) =>
+                        _apply(context, s.copyWith(defaultSwitchEvery: v)),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.timer, color: AppColors.sunsetDeep),
+                  title: const Text('Set decisivo (mejor de 3)'),
+                  subtitle: Text('A ${s.defaultDecidingPoints} puntos'),
+                  trailing: _stepper(
+                    value: s.defaultDecidingPoints,
+                    min: 5,
+                    max: 21,
+                    onChanged: (v) =>
+                        _apply(context, s.copyWith(defaultDecidingPoints: v)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -81,7 +106,7 @@ class SettingsScreen extends StatelessWidget {
                   secondary:
                       const Icon(Icons.volume_up, color: AppColors.turquoise),
                   title: const Text('Sonidos y vibración'),
-                  subtitle: const Text('Al sumar puntos y cerrar sets'),
+                  subtitle: const Text('Al sumar puntos y cambio de pista'),
                   value: s.soundEnabled,
                   onChanged: (v) =>
                       _apply(context, s.copyWith(soundEnabled: v)),
@@ -99,12 +124,12 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           _section('Acerca de'),
-          Card(
-            child: const Column(
+          const Card(
+            child: Column(
               children: [
                 ListTile(
-                  leading:
-                      Icon(Icons.sports_volleyball, color: AppColors.sunsetDeep),
+                  leading: Icon(Icons.sports_volleyball,
+                      color: AppColors.sunsetDeep),
                   title: Text('Voley Score'),
                   subtitle: Text('Marcador de vóley playa · versión 2.0'),
                 ),
