@@ -31,6 +31,10 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   bool _switchBanner = false;
   Timer? _switchTimer;
 
+  // Barra superior que se oculta sola para dejar más sitio al marcador
+  bool _controlsVisible = true;
+  Timer? _controlsTimer;
+
   @override
   void initState() {
     super.initState();
@@ -38,14 +42,39 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
+    // Empieza con la barra visible y programa su ocultado.
+    _programarOcultado();
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
     _switchTimer?.cancel();
+    _controlsTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _programarOcultado() {
+    _controlsTimer?.cancel();
+    _controlsTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _controlsVisible = false);
+    });
+  }
+
+  /// Muestra la barra superior y reinicia el temporizador de ocultado.
+  void _mostrarControles() {
+    if (!_controlsVisible) setState(() => _controlsVisible = true);
+    _programarOcultado();
+  }
+
+  void _toggleControles() {
+    if (_controlsVisible) {
+      _controlsTimer?.cancel();
+      setState(() => _controlsVisible = false);
+    } else {
+      _mostrarControles();
+    }
   }
 
   @override
@@ -89,7 +118,8 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
           SnackBar(
             duration: const Duration(milliseconds: 1200),
             content: Text(
-                'Set para ${score.setsWonA > score.setsWonB ? score.setup.teamA : score.setup.teamB}'),
+              'Set para ${score.setsWonA > score.setsWonB ? score.setup.teamA : score.setup.teamB}',
+            ),
           ),
         );
         break;
@@ -118,15 +148,16 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        insetPadding:
-            const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
         title: Row(
           children: [
             BouncingBall(size: 48),
             const SizedBox(width: 12),
             const Expanded(
-              child: Text('¡Partido terminado!',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              child: Text(
+                '¡Partido terminado!',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
             ),
           ],
         ),
@@ -137,14 +168,18 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
             Row(
               children: [
                 Expanded(
-                  child: Text(record.teamA,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  child: Text(
+                    record.teamA,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
                 Expanded(
-                  child: Text(record.teamB,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  child: Text(
+                    record.teamB,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ],
             ),
@@ -152,29 +187,43 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
             Row(
               children: [
                 Expanded(
-                  child: Text('${record.pointsA}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 46, fontWeight: FontWeight.w900)),
+                  child: Text(
+                    '${record.pointsA}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 46,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
                 Expanded(
-                  child: Text('${record.pointsB}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 46, fontWeight: FontWeight.w900)),
+                  child: Text(
+                    '${record.pointsB}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 46,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
               ],
             ),
             if (wasDeciding) ...[
               const SizedBox(height: 6),
-              Text('Sets: ${record.setsScore}  (${record.setsDetail})',
-                  textAlign: TextAlign.center),
+              Text(
+                'Sets: ${record.setsScore}  (${record.setsDetail})',
+                textAlign: TextAlign.center,
+              ),
             ],
             const SizedBox(height: 12),
             Center(
-              child: Text('🏆 Ganó ${record.winnerName}',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w800)),
+              child: Text(
+                '🏆 Ganó ${record.winnerName}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
             const SizedBox(height: 6),
             Center(
@@ -186,8 +235,10 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 6),
             const Center(
-              child: Text('Guardado en el historial ✅',
-                  style: TextStyle(fontSize: 13)),
+              child: Text(
+                'Guardado en el historial ✅',
+                style: TextStyle(fontSize: 13),
+              ),
             ),
           ],
         ),
@@ -210,7 +261,8 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
               ),
               FilledButton.icon(
                 style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.sunsetDeep),
+                  backgroundColor: AppColors.sunsetDeep,
+                ),
                 onPressed: () => Navigator.pop(ctx, 'rematch'),
                 icon: const Icon(Icons.replay),
                 label: const Text('Revancha (mismo)'),
@@ -245,21 +297,25 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-                controller: a,
-                decoration: const InputDecoration(labelText: 'Equipo A')),
+              controller: a,
+              decoration: const InputDecoration(labelText: 'Equipo A'),
+            ),
             const SizedBox(height: 12),
             TextField(
-                controller: b,
-                decoration: const InputDecoration(labelText: 'Equipo B')),
+              controller: b,
+              decoration: const InputDecoration(labelText: 'Equipo B'),
+            ),
           ],
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Guardar')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Guardar'),
+          ),
         ],
       ),
     );
@@ -272,7 +328,15 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     if (_configuring) {
-      return SetupScreen(onStart: () => setState(() => _configuring = false));
+      return SetupScreen(
+        onStart: () {
+          setState(() {
+            _configuring = false;
+            _controlsVisible = true; // la barra aparece al empezar el partido
+          });
+          _programarOcultado();
+        },
+      );
     }
     final score = context.watch<ScoreboardProvider>();
     final dark = Theme.of(context).brightness == Brightness.dark;
@@ -293,7 +357,17 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
             children: [
               Column(
                 children: [
-                  _topBar(score, dark),
+                  // Barra superior que se repliega (deja más sitio al marcador).
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
+                    alignment: Alignment.topCenter,
+                    child: _controlsVisible
+                        ? _topBar(score, dark)
+                        : const SizedBox(width: double.infinity),
+                  ),
+                  // Asa para volver a mostrar la barra.
+                  _handleBar(),
                   Expanded(
                     child: Row(
                       children: [
@@ -305,8 +379,14 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                             setsWon: score.setsWonA,
                             gradient: AppGradients.teamA,
                             align: Alignment.centerLeft,
-                            onAdd: () => _onPoint('a', score),
-                            onRemove: () => score.removePoint('a'),
+                            onAdd: () {
+                              _mostrarControles();
+                              _onPoint('a', score);
+                            },
+                            onRemove: () {
+                              _mostrarControles();
+                              score.removePoint('a');
+                            },
                             onEditName: () => _editNames(score),
                           ),
                         ),
@@ -319,8 +399,14 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                             setsWon: score.setsWonB,
                             gradient: AppGradients.teamB,
                             align: Alignment.centerRight,
-                            onAdd: () => _onPoint('b', score),
-                            onRemove: () => score.removePoint('b'),
+                            onAdd: () {
+                              _mostrarControles();
+                              _onPoint('b', score);
+                            },
+                            onRemove: () {
+                              _mostrarControles();
+                              score.removePoint('b');
+                            },
                             onEditName: () => _editNames(score),
                           ),
                         ),
@@ -338,10 +424,42 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Asa fina que se toca para volver a mostrar la barra superior.
+  Widget _handleBar() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      child: _controlsVisible
+          ? const SizedBox(width: double.infinity)
+          : GestureDetector(
+              onTap: _mostrarControles,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Center(
+                  child: Container(
+                    width: 46,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
   Widget _topBar(ScoreboardProvider score, bool dark) {
     final onColor = dark ? Colors.white : AppColors.ink;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: dark ? 0.30 : 0.24),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(18)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(
         children: [
           // Menú hamburguesa
@@ -375,6 +493,13 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
             tooltip: 'Nueva configuración',
             onPressed: () => setState(() => _configuring = true),
             icon: const Icon(Icons.tune),
+          ),
+          const SizedBox(width: 6),
+          // Botón para ocultar ya la barra
+          IconButton.filledTonal(
+            tooltip: 'Ocultar barra',
+            onPressed: _toggleControles,
+            icon: const Icon(Icons.keyboard_arrow_up),
           ),
         ],
       ),
@@ -447,26 +572,29 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
           // Aviso próximo cambio de pista (se oculta mientras sale el banner)
           if (remaining != null && !_switchBanner)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.30),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
                 children: [
-                  const Text('CAMBIO DE PISTA',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          letterSpacing: 1,
-                          fontWeight: FontWeight.w800)),
+                  const Text(
+                    'CAMBIO DE PISTA',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      letterSpacing: 1,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   Text(
                     'en $remaining ${remaining == 1 ? "punto" : "puntos"}',
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700),
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -600,8 +728,7 @@ class _TeamPanel extends StatelessWidget {
                           height: 0.82,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
-                          leadingDistribution:
-                              TextLeadingDistribution.even,
+                          leadingDistribution: TextLeadingDistribution.even,
                           shadows: [
                             Shadow(
                               color: Color(0x55000000),
@@ -637,7 +764,9 @@ class _TeamPanel extends StatelessWidget {
                     onTap: onEditName,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(14),
@@ -661,10 +790,7 @@ class _TeamPanel extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (isLeft) ...[
-                            const SizedBox(width: 8),
-                            _dots(),
-                          ],
+                          if (isLeft) ...[const SizedBox(width: 8), _dots()],
                         ],
                       ),
                     ),

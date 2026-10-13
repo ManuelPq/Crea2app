@@ -16,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  int _index = 1; // 0 = inicio/setup, 1 = historial, 2 = ajustes
+  int _index = 0; // 0 = inicio/setup, 1 = historial, 2 = ajustes
 
   void _openMenu() => _scaffoldKey.currentState?.openDrawer();
   void _goTo(int i) => setState(() => _index = i);

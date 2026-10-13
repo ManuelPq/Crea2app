@@ -7,6 +7,7 @@ import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 
 /// Ajustes por defecto del marcador (se aplican al configurar cada partido).
+/// Cabecera compacta y disposición en 2 columnas para aprovechar el horizontal.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, this.onOpenMenu});
 
@@ -19,160 +20,237 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 50,
+        leadingWidth: 52,
         leading: IconButton(
           icon: const Icon(Icons.menu),
           tooltip: 'Menú',
           onPressed: onOpenMenu,
         ),
-        title:
-            const Text('Ajustes', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text(
+          'Ajustes',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _section('Valores por defecto del partido'),
-          Text(
-            'En vóley playa lo habitual es: 21 puntos y cambio de pista cada 7. '
-            'Estos valores se cargan al crear un partido (puedes cambiarlos en cada uno).',
-            style: TextStyle(
-              color: Theme.of(context).textTheme.bodySmall?.color,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Card(
-            child: Column(
+      body: LayoutBuilder(
+        builder: (context, c) {
+          final columnas = c.maxWidth < 620;
+          if (columnas) {
+            return ListView(
+              padding: const EdgeInsets.all(14),
               children: [
-                ListTile(
-                  leading: const Icon(Icons.style, color: AppColors.sunsetDeep),
-                  title: const Text('Tipo de partido'),
-                  subtitle: Text(s.defaultType.label),
-                  trailing: SegmentedButton<MatchType>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                          value: MatchType.single, label: Text('Único')),
-                      ButtonSegment(
-                          value: MatchType.bestOf3, label: Text('Mejor de 3')),
+                _bloquePartido(context, s),
+                const SizedBox(height: 14),
+                _bloqueExperiencia(context, s),
+                const SizedBox(height: 14),
+                _bloqueAcerca(context),
+              ],
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ListView(
+                    children: [
+                      _bloquePartido(context, s),
+                      const SizedBox(height: 16),
+                      _bloqueAcerca(context),
                     ],
-                    selected: {s.defaultType},
-                    onSelectionChanged: (v) =>
-                        _apply(context, s.copyWith(defaultType: v.first)),
                   ),
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.flag, color: AppColors.sunsetDeep),
-                  title: const Text('Puntos para finalizar'),
-                  subtitle: Text('Por defecto: ${s.defaultTargetPoints}'),
-                  trailing: _stepper(
-                    value: s.defaultTargetPoints,
-                    min: 5,
-                    max: 30,
-                    onChanged: (v) =>
-                        _apply(context, s.copyWith(defaultTargetPoints: v)),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.swap_horiz,
-                      color: AppColors.sunsetDeep),
-                  title: const Text('Cambio de pista cada'),
-                  subtitle: Text(s.defaultSwitchEvery == 0
-                      ? 'Sin cambios'
-                      : 'Cada ${s.defaultSwitchEvery} puntos'),
-                  trailing: _stepper(
-                    value: s.defaultSwitchEvery,
-                    min: 0,
-                    max: 15,
-                    onChanged: (v) =>
-                        _apply(context, s.copyWith(defaultSwitchEvery: v)),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.timer, color: AppColors.sunsetDeep),
-                  title: const Text('Set decisivo (mejor de 3)'),
-                  subtitle: Text('A ${s.defaultDecidingPoints} puntos'),
-                  trailing: _stepper(
-                    value: s.defaultDecidingPoints,
-                    min: 5,
-                    max: 21,
-                    onChanged: (v) =>
-                        _apply(context, s.copyWith(defaultDecidingPoints: v)),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      _bloqueExperiencia(context, s),
+                      const SizedBox(height: 16),
+                      _avisoHorizontal(context),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 18),
-          _section('Experiencia'),
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  secondary:
-                      const Icon(Icons.volume_up, color: AppColors.turquoise),
-                  title: const Text('Sonidos y vibración'),
-                  subtitle: const Text('Al sumar puntos y cambio de pista'),
-                  value: s.soundEnabled,
-                  onChanged: (v) =>
-                      _apply(context, s.copyWith(soundEnabled: v)),
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  secondary: const Icon(Icons.dark_mode,
-                      color: AppColors.turquoise),
-                  title: const Text('Modo oscuro'),
-                  value: s.darkMode,
-                  onChanged: (v) => _apply(context, s.copyWith(darkMode: v)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          _section('Acerca de'),
-          const Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: Icon(Icons.sports_volleyball,
-                      color: AppColors.sunsetDeep),
-                  title: Text('Voley Score'),
-                  subtitle: Text('Marcador de vóley playa · versión 2.0'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Center(
-            child: Text(
-              'Hecho para jugar en horizontal, a pie de pista 🏐',
-              style: TextStyle(
-                color: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.color
-                    ?.withValues(alpha: 0.7),
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _section(String title) => Padding(
-        padding: const EdgeInsets.only(left: 6, bottom: 8),
-        child: Text(
-          title.toUpperCase(),
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 12,
-            letterSpacing: 1.2,
-            color: AppColors.sunsetDeep,
+  Widget _bloquePartido(BuildContext context, AppSettings s) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _section('Valores por defecto del partido'),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.style, color: AppColors.sunsetDeep),
+                title: const Text('Tipo de partido'),
+                subtitle: Text(s.defaultType.label),
+                trailing: SegmentedButton<MatchType>(
+                  showSelectedIcon: false,
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  segments: const [
+                    ButtonSegment(
+                      value: MatchType.single,
+                      label: Text('Único'),
+                    ),
+                    ButtonSegment(
+                      value: MatchType.bestOf3,
+                      label: Text('Mejor de 3'),
+                    ),
+                  ],
+                  selected: {s.defaultType},
+                  onSelectionChanged: (v) =>
+                      _apply(context, s.copyWith(defaultType: v.first)),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.flag, color: AppColors.sunsetDeep),
+                title: const Text('Puntos para finalizar'),
+                subtitle: Text('Por defecto: ${s.defaultTargetPoints}'),
+                trailing: _stepper(
+                  value: s.defaultTargetPoints,
+                  min: 5,
+                  max: 30,
+                  onChanged: (v) =>
+                      _apply(context, s.copyWith(defaultTargetPoints: v)),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(
+                  Icons.swap_horiz,
+                  color: AppColors.sunsetDeep,
+                ),
+                title: const Text('Cambio de pista cada'),
+                subtitle: Text(
+                  s.defaultSwitchEvery == 0
+                      ? 'Sin cambios'
+                      : 'Cada ${s.defaultSwitchEvery} puntos',
+                ),
+                trailing: _stepper(
+                  value: s.defaultSwitchEvery,
+                  min: 0,
+                  max: 15,
+                  onChanged: (v) =>
+                      _apply(context, s.copyWith(defaultSwitchEvery: v)),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.timer, color: AppColors.sunsetDeep),
+                title: const Text('Set decisivo (mejor de 3)'),
+                subtitle: Text('A ${s.defaultDecidingPoints} puntos'),
+                trailing: _stepper(
+                  value: s.defaultDecidingPoints,
+                  min: 5,
+                  max: 21,
+                  onChanged: (v) =>
+                      _apply(context, s.copyWith(defaultDecidingPoints: v)),
+                ),
+              ),
+            ],
           ),
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          'En vóley playa lo habitual es 21 puntos y cambio de pista cada 7. '
+          'Estos valores se cargan al crear un partido (puedes cambiarlos en cada uno).',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).textTheme.bodySmall?.color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _bloqueExperiencia(BuildContext context, AppSettings s) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _section('Experiencia'),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Column(
+            children: [
+              SwitchListTile(
+                secondary: const Icon(
+                  Icons.volume_up,
+                  color: AppColors.turquoise,
+                ),
+                title: const Text('Sonidos y vibración'),
+                subtitle: const Text('Al sumar puntos y cambio de pista'),
+                value: s.soundEnabled,
+                onChanged: (v) => _apply(context, s.copyWith(soundEnabled: v)),
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
+                secondary: const Icon(
+                  Icons.dark_mode,
+                  color: AppColors.turquoise,
+                ),
+                title: const Text('Modo oscuro'),
+                value: s.darkMode,
+                onChanged: (v) => _apply(context, s.copyWith(darkMode: v)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _bloqueAcerca(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _section('Acerca de'),
+        const Card(
+          margin: EdgeInsets.zero,
+          child: ListTile(
+            leading: Icon(Icons.sports_volleyball, color: AppColors.sunsetDeep),
+            title: Text('Voley Score'),
+            subtitle: Text('Marcador de vóley playa · versión 2.0'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _avisoHorizontal(BuildContext context) => Text(
+    'Hecho para jugar en horizontal, a pie de pista 🏐',
+    textAlign: TextAlign.center,
+    style: TextStyle(
+      fontSize: 12,
+      color: Theme.of(
+        context,
+      ).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+    ),
+  );
+
+  Widget _section(String title) => Padding(
+    padding: const EdgeInsets.only(left: 6, bottom: 8),
+    child: Text(
+      title.toUpperCase(),
+      style: const TextStyle(
+        fontWeight: FontWeight.w800,
+        fontSize: 12,
+        letterSpacing: 1.2,
+        color: AppColors.sunsetDeep,
+      ),
+    ),
+  );
 
   Widget _stepper({
     required int value,
@@ -184,12 +262,16 @@ class SettingsScreen extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
+          visualDensity: VisualDensity.compact,
           onPressed: value > min ? () => onChanged(value - 1) : null,
           icon: const Icon(Icons.remove_circle_outline),
         ),
-        Text('$value',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        Text(
+          '$value',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
         IconButton(
+          visualDensity: VisualDensity.compact,
           onPressed: value < max ? () => onChanged(value + 1) : null,
           icon: const Icon(Icons.add_circle_outline),
         ),
