@@ -60,7 +60,8 @@ class ScoreboardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void startMatch(GameSetup s) {    setup = s;
+  void startMatch(GameSetup s) {
+    setup = s;
     pointsA = 0;
     pointsB = 0;
     setsWonA = 0;
@@ -105,14 +106,16 @@ class ScoreboardProvider extends ChangeNotifier {
 
   // ---------- Puntos ----------
   void _pushUndo() {
-    _undoStack.add(_Snapshot(
-      pointsA: pointsA,
-      pointsB: pointsB,
-      setsWonA: setsWonA,
-      setsWonB: setsWonB,
-      completedSets: List<GameSet>.from(completedSets),
-      courtSwitched: courtSwitched,
-    ));
+    _undoStack.add(
+      _Snapshot(
+        pointsA: pointsA,
+        pointsB: pointsB,
+        setsWonA: setsWonA,
+        setsWonB: setsWonB,
+        completedSets: List<GameSet>.from(completedSets),
+        courtSwitched: courtSwitched,
+      ),
+    );
     if (_undoStack.length > 200) _undoStack.removeAt(0);
   }
 

@@ -8,15 +8,28 @@ import '../providers/matches_provider.dart';
 import '../providers/scoreboard_provider.dart';
 import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_menu.dart';
 import '../widgets/bouncing_ball.dart';
 import 'setup_screen.dart';
 
 /// Pantalla del marcador (horizontal, a pie de pista).
 class ScoreScreen extends StatefulWidget {
-  const ScoreScreen({super.key, this.onOpenHistory, this.onOpenMenu});
+  const ScoreScreen({
+    super.key,
+    this.currentIndex = 0,
+    this.newMatchSignal = 0,
+    this.onNewMatch,
+    this.onOpenScoreboard,
+    this.onOpenHistory,
+    this.onOpenSettings,
+  });
 
+  final int currentIndex;
+  final int newMatchSignal;
+  final VoidCallback? onNewMatch;
+  final VoidCallback? onOpenScoreboard;
   final VoidCallback? onOpenHistory;
-  final VoidCallback? onOpenMenu;
+  final VoidCallback? onOpenSettings;
 
   @override
   State<ScoreScreen> createState() => _ScoreScreenState();
@@ -42,8 +55,16 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
-    // Empieza con la barra visible y programa su ocultado.
     _programarOcultado();
+  }
+
+  @override
+  void didUpdateWidget(covariant ScoreScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Petición externa de "nuevo partido".
+    if (widget.newMatchSignal != oldWidget.newMatchSignal) {
+      _irANuevaConfiguracion();
+    }
   }
 
   @override
@@ -55,6 +76,11 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) setState(() {});
+  }
+
   void _programarOcultado() {
     _controlsTimer?.cancel();
     _controlsTimer = Timer(const Duration(seconds: 5), () {
@@ -62,7 +88,6 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     });
   }
 
-  /// Muestra la barra superior y reinicia el temporizador de ocultado.
   void _mostrarControles() {
     if (!_controlsVisible) setState(() => _controlsVisible = true);
     _programarOcultado();
@@ -77,14 +102,17 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     }
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) setState(() {});
+  /// Vuelve a la pantalla de configuración (nuevo partido).
+  void _irANuevaConfiguracion() {
+    context.read<ScoreboardProvider>().reset();
+    setState(() {
+      _configuring = true;
+      _controlsVisible = true;
+    });
   }
 
   // ---------------- Puntos ----------------
   void _onPoint(String team, ScoreboardProvider score) {
-    // El banner de cambio de pista se cierra en cuanto se suma un punto.
     if (_switchBanner) {
       _switchTimer?.cancel();
       setState(() => _switchBanner = false);
@@ -139,31 +167,27 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   // ---------------- Fin de partido ----------------
   Future<void> _onMatchFinished(ScoreboardProvider score) async {
     final record = score.buildRecord();
-    // Guardar automáticamente en el historial.
     if (mounted) await context.read<MatchesProvider>().addMatch(record);
     if (!mounted) return;
 
-    final wasDeciding = score.setup.type == MatchType.bestOf3;
     final action = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 60, vertical: 24),
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            BouncingBall(size: 48),
+            BouncingBall(size: 44, animate: false),
             const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                '¡Partido terminado!',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
+            const Text(
+              '¡Partido terminado!',
+              style: TextStyle(fontWeight: FontWeight.w900),
             ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
@@ -183,7 +207,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Row(
               children: [
                 Expanded(
@@ -191,7 +215,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                     '${record.pointsA}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 46,
+                      fontSize: 52,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -201,71 +225,53 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                     '${record.pointsB}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 46,
+                      fontSize: 52,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
               ],
             ),
-            if (wasDeciding) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Sets: ${record.setsScore}  (${record.setsDetail})',
-                textAlign: TextAlign.center,
-              ),
-            ],
-            const SizedBox(height: 12),
-            Center(
-              child: Text(
-                '🏆 Ganó ${record.winnerName}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+            const SizedBox(height: 8),
+            Text(
+              '🏆 Ganó ${record.winnerName}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${record.teamA} ${record.pointsA} - ${record.pointsB} ${record.teamB}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 13),
             ),
             const SizedBox(height: 6),
-            Center(
-              child: Text(
-                'Resultado: ${record.teamA} ${record.pointsA} - ${record.pointsB} ${record.teamB}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontStyle: FontStyle.italic),
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Center(
-              child: Text(
-                'Guardado en el historial ✅',
-                style: TextStyle(fontSize: 13),
-              ),
+            const Text(
+              'Guardado en el historial ✅',
+              style: TextStyle(fontSize: 12),
             ),
           ],
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              OutlinedButton.icon(
-                onPressed: () => Navigator.pop(ctx, 'history'),
-                icon: const Icon(Icons.history),
-                label: const Text('Ver historial'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.pop(ctx, 'config'),
-                icon: const Icon(Icons.tune),
-                label: const Text('Nueva configuración'),
-              ),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.sunsetDeep,
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.pop(ctx, 'config'),
+                  icon: const Icon(Icons.add_circle_outline, size: 18),
+                  label: const Text('Nuevo partido'),
                 ),
-                onPressed: () => Navigator.pop(ctx, 'rematch'),
-                icon: const Icon(Icons.replay),
-                label: const Text('Revancha (mismo)'),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.sunsetDeep,
+                  ),
+                  onPressed: () => Navigator.pop(ctx, 'rematch'),
+                  icon: const Icon(Icons.replay, size: 18),
+                  label: const Text('Revancha'),
+                ),
               ),
             ],
           ),
@@ -274,15 +280,15 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     );
 
     if (!mounted) return;
-    if (action == 'history') {
-      score.reset();
-      widget.onOpenHistory?.call();
-    } else if (action == 'config') {
-      score.reset();
-      setState(() => _configuring = true);
+    if (action == 'config') {
+      _irANuevaConfiguracion();
     } else {
       // Revancha con la misma configuración
       score.startMatch(score.setup);
+      setState(() {
+        _controlsVisible = true;
+      });
+      _programarOcultado();
     }
   }
 
@@ -329,10 +335,11 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     if (_configuring) {
       return SetupScreen(
+        onOpenSettings: widget.onOpenSettings,
         onStart: () {
           setState(() {
             _configuring = false;
-            _controlsVisible = true; // la barra aparece al empezar el partido
+            _controlsVisible = true;
           });
           _programarOcultado();
         },
@@ -357,7 +364,6 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
             children: [
               Column(
                 children: [
-                  // Barra superior que se repliega (deja más sitio al marcador).
                   AnimatedSize(
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOut,
@@ -366,7 +372,6 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                         ? _topBar(score, dark)
                         : const SizedBox(width: double.infinity),
                   ),
-                  // Asa para volver a mostrar la barra.
                   _handleBar(),
                   Expanded(
                     child: Row(
@@ -415,7 +420,6 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                   ),
                 ],
               ),
-              // Banner flotante de cambio de pista
               _switchBannerOverlay(score),
             ],
           ),
@@ -459,16 +463,9 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
         color: Colors.black.withValues(alpha: dark ? 0.30 : 0.24),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(18)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       child: Row(
         children: [
-          // Menú hamburguesa
-          IconButton.filledTonal(
-            tooltip: 'Menú',
-            onPressed: widget.onOpenMenu,
-            icon: const Icon(Icons.menu),
-          ),
-          const SizedBox(width: 10),
           Flexible(
             child: Text(
               score.modeLabel,
@@ -490,16 +487,24 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(width: 6),
           IconButton.filledTonal(
-            tooltip: 'Nueva configuración',
-            onPressed: () => setState(() => _configuring = true),
+            tooltip: 'Nuevo partido',
+            onPressed: _irANuevaConfiguracion,
             icon: const Icon(Icons.tune),
           ),
           const SizedBox(width: 6),
-          // Botón para ocultar ya la barra
           IconButton.filledTonal(
             tooltip: 'Ocultar barra',
             onPressed: _toggleControles,
             icon: const Icon(Icons.keyboard_arrow_up),
+          ),
+          const SizedBox(width: 6),
+          // Menú a la derecha (Nuevo partido / Marcador / Historial / Ajustes)
+          AppMenuButton(
+            currentIndex: 0,
+            onNewMatch: _irANuevaConfiguracion,
+            onScoreboard: () {},
+            onHistory: () => widget.onOpenHistory?.call(),
+            onSettings: () => widget.onOpenSettings?.call(),
           ),
         ],
       ),
@@ -544,21 +549,18 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// Columna central con la pelota, resultado y aviso de próximo cambio.
   Widget _centerStrip(ScoreboardProvider score) {
     final next = score.nextSwitchAt;
     final remaining = next == null ? null : next - score.totalPoints;
     final isMulti = score.setup.type == MatchType.bestOf3;
     return Container(
-      width: 132,
+      width: 128,
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Pelota (pic2.png) — animada mientras el partido está en juego
           BouncingBall(size: 92, animate: !score.matchFinished),
           const SizedBox(height: 8),
-          // Resultado de sets (solo mejor de 3)
           if (isMulti)
             Text(
               '${score.setsWonA} - ${score.setsWonB}',
@@ -569,7 +571,6 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
               ),
             ),
           const SizedBox(height: 8),
-          // Aviso próximo cambio de pista (se oculta mientras sale el banner)
           if (remaining != null && !_switchBanner)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -713,7 +714,6 @@ class _TeamPanel extends StatelessWidget {
             onLongPress: onRemove,
             child: Stack(
               children: [
-                // Número gigante ocupando ~80% de la celda
                 Positioned.fill(
                   child: FractionallySizedBox(
                     widthFactor: 0.82,
@@ -741,7 +741,6 @@ class _TeamPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Etiqueta grande A / B
                 Positioned(
                   top: 14,
                   left: isLeft ? null : 18,
@@ -755,7 +754,6 @@ class _TeamPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Nombre (arriba) + sets, en el lado exterior
                 Positioned(
                   top: 12,
                   left: isLeft ? 16 : null,
@@ -796,7 +794,6 @@ class _TeamPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Botones -1 / +1 (abajo)
                 Positioned(
                   bottom: 12,
                   left: isLeft ? 16 : null,

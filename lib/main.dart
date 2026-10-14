@@ -8,12 +8,11 @@ import 'providers/scoreboard_provider.dart';
 import 'screens/home_screen.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
-import 'widgets/orientation_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Marcador pensado para usarse en horizontal.
+  // La app arranca en horizontal (marcador). Historial y Ajustes permiten girar.
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
@@ -40,9 +39,7 @@ class VoleyScoreApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<StorageService>.value(value: storage),
-        ChangeNotifierProvider(
-          create: (_) => MatchesProvider(storage)..load(),
-        ),
+        ChangeNotifierProvider(create: (_) => MatchesProvider(storage)..load()),
         ChangeNotifierProvider(
           create: (_) => ScoreboardProvider()..applySettings(initialSettings),
         ),
@@ -54,8 +51,10 @@ class VoleyScoreApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
-            themeMode: score.settings.darkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const OrientationGate(child: HomeScreen()),
+            themeMode: score.settings.darkMode
+                ? ThemeMode.dark
+                : ThemeMode.light,
+            home: const HomeScreen(),
           );
         },
       ),

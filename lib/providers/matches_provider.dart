@@ -14,8 +14,9 @@ class MatchesProvider extends ChangeNotifier {
 
   /// Partidos activos (no borrados), ordenados del más reciente al más antiguo.
   List<MatchRecord> get history {
-    final list =
-        _matches.where((m) => m.status == MatchStatus.finished).toList();
+    final list = _matches
+        .where((m) => m.status == MatchStatus.finished)
+        .toList();
     list.sort((a, b) => b.playedAt.compareTo(a.playedAt));
     return list;
   }

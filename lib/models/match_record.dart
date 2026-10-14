@@ -6,9 +6,8 @@ import 'dart:convert';
 enum MatchType { single, bestOf3 }
 
 extension MatchTypeX on MatchType {
-  String get label => this == MatchType.single
-      ? 'Partido único'
-      : 'Al mejor de 3 sets';
+  String get label =>
+      this == MatchType.single ? 'Partido único' : 'Al mejor de 3 sets';
 
   String get description => this == MatchType.single
       ? 'Un solo set hasta los puntos objetivo'
@@ -25,7 +24,8 @@ class GameSetup {
   final MatchType type;
   final int targetPoints; // puntos para finalizar (por defecto 21)
   final int switchEvery; // cambio de pista cada N puntos (por defecto 7)
-  final int decidingPoints; // puntos del set decisivo en bestOf3 (por defecto 15)
+  final int
+  decidingPoints; // puntos del set decisivo en bestOf3 (por defecto 15)
 
   const GameSetup({
     this.teamA = 'Equipo A',
@@ -43,15 +43,14 @@ class GameSetup {
     int? targetPoints,
     int? switchEvery,
     int? decidingPoints,
-  }) =>
-      GameSetup(
-        teamA: teamA ?? this.teamA,
-        teamB: teamB ?? this.teamB,
-        type: type ?? this.type,
-        targetPoints: targetPoints ?? this.targetPoints,
-        switchEvery: switchEvery ?? this.switchEvery,
-        decidingPoints: decidingPoints ?? this.decidingPoints,
-      );
+  }) => GameSetup(
+    teamA: teamA ?? this.teamA,
+    teamB: teamB ?? this.teamB,
+    type: type ?? this.type,
+    targetPoints: targetPoints ?? this.targetPoints,
+    switchEvery: switchEvery ?? this.switchEvery,
+    decidingPoints: decidingPoints ?? this.decidingPoints,
+  );
 }
 
 /// Un set dentro de un partido (solo se usa en bestOf3).
@@ -118,47 +117,47 @@ class MatchRecord {
       completedSets.map((s) => '${s.pointsA}-${s.pointsB}').join('  ·  ');
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'teamA': teamA,
-        'teamB': teamB,
-        'pointsA': pointsA,
-        'pointsB': pointsB,
-        'setsWonA': setsWonA,
-        'setsWonB': setsWonB,
-        'completedSets': completedSets.map((s) => s.toJson()).toList(),
-        'type': type.name,
-        'targetPoints': targetPoints,
-        'switchEvery': switchEvery,
-        'playedAt': playedAt.toIso8601String(),
-        'durationMs': duration.inMilliseconds,
-        'status': status.name,
-      };
+    'id': id,
+    'teamA': teamA,
+    'teamB': teamB,
+    'pointsA': pointsA,
+    'pointsB': pointsB,
+    'setsWonA': setsWonA,
+    'setsWonB': setsWonB,
+    'completedSets': completedSets.map((s) => s.toJson()).toList(),
+    'type': type.name,
+    'targetPoints': targetPoints,
+    'switchEvery': switchEvery,
+    'playedAt': playedAt.toIso8601String(),
+    'durationMs': duration.inMilliseconds,
+    'status': status.name,
+  };
 
   factory MatchRecord.fromJson(Map<String, dynamic> j) => MatchRecord(
-        id: j['id'] as String,
-        teamA: j['teamA'] as String? ?? 'Equipo A',
-        teamB: j['teamB'] as String? ?? 'Equipo B',
-        pointsA: (j['pointsA'] ?? 0) as int,
-        pointsB: (j['pointsB'] ?? 0) as int,
-        setsWonA: (j['setsWonA'] ?? 0) as int,
-        setsWonB: (j['setsWonB'] ?? 0) as int,
-        completedSets: (j['completedSets'] as List<dynamic>? ?? [])
-            .map((e) => GameSet.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        type: MatchType.values.firstWhere(
-          (t) => t.name == j['type'],
-          orElse: () => MatchType.single,
-        ),
-        targetPoints: (j['targetPoints'] ?? 21) as int,
-        switchEvery: (j['switchEvery'] ?? 7) as int,
-        playedAt:
-            DateTime.tryParse(j['playedAt'] as String? ?? '') ?? DateTime.now(),
-        duration: Duration(milliseconds: (j['durationMs'] ?? 0) as int),
-        status: MatchStatus.values.firstWhere(
-          (s) => s.name == j['status'],
-          orElse: () => MatchStatus.finished,
-        ),
-      );
+    id: j['id'] as String,
+    teamA: j['teamA'] as String? ?? 'Equipo A',
+    teamB: j['teamB'] as String? ?? 'Equipo B',
+    pointsA: (j['pointsA'] ?? 0) as int,
+    pointsB: (j['pointsB'] ?? 0) as int,
+    setsWonA: (j['setsWonA'] ?? 0) as int,
+    setsWonB: (j['setsWonB'] ?? 0) as int,
+    completedSets: (j['completedSets'] as List<dynamic>? ?? [])
+        .map((e) => GameSet.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    type: MatchType.values.firstWhere(
+      (t) => t.name == j['type'],
+      orElse: () => MatchType.single,
+    ),
+    targetPoints: (j['targetPoints'] ?? 21) as int,
+    switchEvery: (j['switchEvery'] ?? 7) as int,
+    playedAt:
+        DateTime.tryParse(j['playedAt'] as String? ?? '') ?? DateTime.now(),
+    duration: Duration(milliseconds: (j['durationMs'] ?? 0) as int),
+    status: MatchStatus.values.firstWhere(
+      (s) => s.name == j['status'],
+      orElse: () => MatchStatus.finished,
+    ),
+  );
 
   static String encodeList(List<MatchRecord> list) =>
       jsonEncode(list.map((m) => m.toJson()).toList());
@@ -191,11 +190,11 @@ class AppSettings {
   });
 
   GameSetup get defaultSetup => GameSetup(
-        type: defaultType,
-        targetPoints: defaultTargetPoints,
-        switchEvery: defaultSwitchEvery,
-        decidingPoints: defaultDecidingPoints,
-      );
+    type: defaultType,
+    targetPoints: defaultTargetPoints,
+    switchEvery: defaultSwitchEvery,
+    decidingPoints: defaultDecidingPoints,
+  );
 
   AppSettings copyWith({
     MatchType? defaultType,
@@ -204,13 +203,12 @@ class AppSettings {
     int? defaultDecidingPoints,
     bool? soundEnabled,
     bool? darkMode,
-  }) =>
-      AppSettings(
-        defaultType: defaultType ?? this.defaultType,
-        defaultTargetPoints: defaultTargetPoints ?? this.defaultTargetPoints,
-        defaultSwitchEvery: defaultSwitchEvery ?? this.defaultSwitchEvery,
-        defaultDecidingPoints: defaultDecidingPoints ?? this.defaultDecidingPoints,
-        soundEnabled: soundEnabled ?? this.soundEnabled,
-        darkMode: darkMode ?? this.darkMode,
-      );
+  }) => AppSettings(
+    defaultType: defaultType ?? this.defaultType,
+    defaultTargetPoints: defaultTargetPoints ?? this.defaultTargetPoints,
+    defaultSwitchEvery: defaultSwitchEvery ?? this.defaultSwitchEvery,
+    defaultDecidingPoints: defaultDecidingPoints ?? this.defaultDecidingPoints,
+    soundEnabled: soundEnabled ?? this.soundEnabled,
+    darkMode: darkMode ?? this.darkMode,
+  );
 }

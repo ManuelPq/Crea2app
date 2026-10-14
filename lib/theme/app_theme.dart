@@ -52,14 +52,15 @@ class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.sunsetOrange,
-        brightness: Brightness.light,
-      ).copyWith(
-        primary: AppColors.sunsetDeep,
-        secondary: AppColors.turquoise,
-        surface: AppColors.sand,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: AppColors.sunsetOrange,
+            brightness: Brightness.light,
+          ).copyWith(
+            primary: AppColors.sunsetDeep,
+            secondary: AppColors.turquoise,
+            surface: AppColors.sand,
+          ),
       scaffoldBackgroundColor: AppColors.sand,
     );
     return base.copyWith(
@@ -81,14 +82,15 @@ class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.sunsetOrange,
-        brightness: Brightness.dark,
-      ).copyWith(
-        primary: AppColors.sunsetOrange,
-        secondary: AppColors.turquoise,
-        surface: AppColors.darkSurface,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: AppColors.sunsetOrange,
+            brightness: Brightness.dark,
+          ).copyWith(
+            primary: AppColors.sunsetOrange,
+            secondary: AppColors.turquoise,
+            surface: AppColors.darkSurface,
+          ),
       scaffoldBackgroundColor: AppColors.darkBg,
     );
     return base.copyWith(

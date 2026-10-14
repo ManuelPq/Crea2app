@@ -5,13 +5,24 @@ import '../models/match_record.dart';
 import '../providers/scoreboard_provider.dart';
 import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_menu.dart';
 
 /// Ajustes por defecto del marcador (se aplican al configurar cada partido).
 /// Cabecera compacta y disposición en 2 columnas para aprovechar el horizontal.
+/// Esta pantalla puede girarse a vertical.
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key, this.onOpenMenu});
+  const SettingsScreen({
+    super.key,
+    this.currentIndex = 2,
+    this.onNewMatch,
+    this.onOpenScoreboard,
+    this.onOpenHistory,
+  });
 
-  final VoidCallback? onOpenMenu;
+  final int currentIndex;
+  final VoidCallback? onNewMatch;
+  final VoidCallback? onOpenScoreboard;
+  final VoidCallback? onOpenHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -20,17 +31,23 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 50,
-        leadingWidth: 52,
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          tooltip: 'Menú',
-          onPressed: onOpenMenu,
-        ),
+        toolbarHeight: 52,
+        titleSpacing: 16,
+        automaticallyImplyLeading: false,
         title: const Text(
           'Ajustes',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
+        actions: [
+          AppMenuButton(
+            currentIndex: currentIndex,
+            onNewMatch: () => onNewMatch?.call(),
+            onScoreboard: () => onOpenScoreboard?.call(),
+            onHistory: () => onOpenHistory?.call(),
+            onSettings: () {},
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, c) {

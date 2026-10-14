@@ -6,17 +6,15 @@ import '../providers/scoreboard_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bouncing_ball.dart';
 
-/// Pantalla previa: se elige tipo de partido, puntos, cambios y nombres.
-///
-/// Pensada para **entrar completa** en horizontal (poco alto disponible):
-/// - Columna izquierda: pelota animada + título + botón EMPEZAR (siempre visible).
-/// - Columna derecha: tarjeta blanca con toda la configuración.
-/// Se adapta a la altura de la pantalla y, solo como red de seguridad,
-/// permite desplazar el contenido mostrando una pista ("más abajo").
+/// Pantalla previa al partido, deliberadamente sencilla:
+/// solo los nombres de los equipos + EMPEZAR.
+/// Los puntos y el cambio de pista se toman de los Ajustes
+/// (pero se muestran aquí a modo de resumen, con acceso directo).
 class SetupScreen extends StatefulWidget {
-  const SetupScreen({super.key, this.onStart});
+  const SetupScreen({super.key, this.onStart, this.onOpenSettings});
 
   final VoidCallback? onStart;
+  final VoidCallback? onOpenSettings;
 
   @override
   State<SetupScreen> createState() => _SetupScreenState();
@@ -26,8 +24,6 @@ class _SetupScreenState extends State<SetupScreen> {
   late GameSetup _setup;
   late TextEditingController _a;
   late TextEditingController _b;
-  final ScrollController _scroll = ScrollController();
-  bool _puedeDesplazar = false;
 
   @override
   void initState() {
@@ -36,30 +32,20 @@ class _SetupScreenState extends State<SetupScreen> {
     _setup = score.settings.defaultSetup;
     _a = TextEditingController(text: _setup.teamA);
     _b = TextEditingController(text: _setup.teamB);
-    _scroll.addListener(_actualizarPista);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _actualizarPista());
-  }
-
-  void _actualizarPista() {
-    if (!_scroll.hasClients) return;
-    final restante = _scroll.position.maxScrollExtent - _scroll.position.pixels;
-    final puede = restante > 4;
-    if (puede != _puedeDesplazar) {
-      setState(() => _puedeDesplazar = puede);
-    }
   }
 
   @override
   void dispose() {
     _a.dispose();
     _b.dispose();
-    _scroll.dispose();
     super.dispose();
   }
 
   void _start() {
     final score = context.read<ScoreboardProvider>();
-    final s = _setup.copyWith(
+    // Toma la configuración actual de los Ajustes.
+    final base = score.settings.defaultSetup;
+    final s = base.copyWith(
       teamA: _a.text.trim().isEmpty ? 'Equipo A' : _a.text.trim(),
       teamB: _b.text.trim().isEmpty ? 'Equipo B' : _b.text.trim(),
     );
@@ -70,6 +56,9 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final score = context.watch<ScoreboardProvider>();
+    final cfg = score.settings;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -86,24 +75,18 @@ class _SetupScreenState extends State<SetupScreen> {
             builder: (context, c) {
               final h = c.maxHeight;
               final compacto = h < 340;
-              final medio = h < 420;
-              final pad = compacto ? 8.0 : 12.0;
               return Padding(
-                padding: EdgeInsets.all(pad),
+                padding: EdgeInsets.all(compacto ? 10 : 14),
                 child: Row(
                   children: [
                     Expanded(
-                      flex: 30,
-                      child: _columnaIzquierda(
-                        compacto: compacto,
-                        medio: medio,
-                        dark: dark,
-                      ),
+                      flex: 32,
+                      child: _columnaIzquierda(compacto: compacto),
                     ),
-                    SizedBox(width: compacto ? 6 : 10),
+                    SizedBox(width: compacto ? 8 : 14),
                     Expanded(
-                      flex: 70,
-                      child: _tarjetaConfiguracion(compacto: compacto),
+                      flex: 68,
+                      child: _tarjeta(compacto: compacto, dark: dark, cfg: cfg),
                     ),
                   ],
                 ),
@@ -115,16 +98,9 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  // ---------------- Columna izquierda ----------------
-  Widget _columnaIzquierda({
-    required bool compacto,
-    required bool medio,
-    required bool dark,
-  }) {
-    final ballSize = compacto ? 62.0 : (medio ? 88.0 : 108.0);
-    final titleSize = compacto ? 24.0 : (medio ? 30.0 : 36.0);
-    final btnHeight = compacto ? 44.0 : 52.0;
-
+  Widget _columnaIzquierda({required bool compacto}) {
+    final ballSize = compacto ? 78.0 : 118.0;
+    final titleSize = compacto ? 28.0 : 40.0;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -142,26 +118,26 @@ class _SetupScreenState extends State<SetupScreen> {
           ),
         ),
         if (!compacto) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
-            'Configura y pulsa EMPEZAR',
+            'Configura los equipos y pulsa EMPEZAR',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: medio ? 12 : 14,
+              fontSize: 13,
               color: Colors.white.withValues(alpha: 0.92),
             ),
           ),
         ],
-        SizedBox(height: compacto ? 10 : 14),
+        SizedBox(height: compacto ? 10 : 16),
         SizedBox(
           width: double.infinity,
-          height: btnHeight,
+          height: compacto ? 48 : 56,
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: AppColors.sunsetDeep,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
             onPressed: _start,
@@ -169,7 +145,7 @@ class _SetupScreenState extends State<SetupScreen> {
             label: const Text(
               'EMPEZAR',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1,
               ),
@@ -180,164 +156,56 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  // ---------------- Tarjeta derecha ----------------
-  Widget _tarjetaConfiguracion({required bool compacto}) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
+  Widget _tarjeta({
+    required bool compacto,
+    required bool dark,
+    required AppSettings cfg,
+  }) {
     return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compacto ? 20 : 30,
+        vertical: compacto ? 12 : 18,
+      ),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: compacto ? 14 : 20,
-              vertical: compacto ? 10 : 14,
+          _teamField(_a, 'Equipo A'),
+          SizedBox(height: compacto ? 12 : 18),
+          _teamField(_b, 'Equipo B'),
+          SizedBox(height: compacto ? 12 : 20),
+          // Resumen de la configuración (viene de Ajustes)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.sunsetOrange.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Scrollbar(
-              controller: _scroll,
-              child: SingleChildScrollView(
-                controller: _scroll,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Fila 1: nombres + VS
-                    Row(
-                      children: [
-                        Expanded(child: _teamField(_a, 'Equipo A')),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Text(
-                            'VS',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        Expanded(child: _teamField(_b, 'Equipo B')),
-                      ],
-                    ),
-                    SizedBox(height: compacto ? 8 : 12),
-                    _divider(),
-                    _configRow(
-                      'Puntos para finalizar',
-                      _setup.targetPoints,
-                      5,
-                      30,
-                      (v) => setState(
-                        () => _setup = _setup.copyWith(targetPoints: v),
-                      ),
-                    ),
-                    _divider(),
-                    _configRow(
-                      'Cambio de pista cada',
-                      _setup.switchEvery,
-                      0,
-                      15,
-                      (v) => setState(
-                        () => _setup = _setup.copyWith(switchEvery: v),
-                      ),
-                      suffix: _setup.switchEvery == 0
-                          ? 'sin cambios'
-                          : 'puntos',
-                    ),
-                    _divider(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Tipo de partido',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          SegmentedButton<MatchType>(
-                            showSelectedIcon: false,
-                            style: const ButtonStyle(
-                              visualDensity: VisualDensity.compact,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            segments: const [
-                              ButtonSegment(
-                                value: MatchType.single,
-                                label: Text('Único'),
-                              ),
-                              ButtonSegment(
-                                value: MatchType.bestOf3,
-                                label: Text('Mejor de 3'),
-                              ),
-                            ],
-                            selected: {_setup.type},
-                            onSelectionChanged: (v) => setState(
-                              () => _setup = _setup.copyWith(type: v.first),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_setup.type == MatchType.bestOf3) ...[
-                      _divider(),
-                      _configRow(
-                        'Set decisivo',
-                        _setup.decidingPoints,
-                        5,
-                        21,
-                        (v) => setState(
-                          () => _setup = _setup.copyWith(decidingPoints: v),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Pista de desplazamiento (solo si hiciera falta)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              child: AnimatedOpacity(
-                opacity: _puedeDesplazar ? 1 : 0,
-                duration: const Duration(milliseconds: 200),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        (dark ? AppColors.darkSurface : Colors.white)
-                            .withValues(alpha: 0),
-                        (dark ? AppColors.darkSurface : Colors.white),
-                      ],
+            child: Row(
+              children: [
+                const Icon(Icons.tune, color: AppColors.sunsetDeep, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '${cfg.defaultType == MatchType.single ? "Partido único" : "Mejor de 3"} · '
+                    'a ${cfg.defaultTargetPoints} pts · '
+                    '${cfg.defaultSwitchEvery == 0 ? "sin cambios" : "cambio de pista cada ${cfg.defaultSwitchEvery}"}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.keyboard_arrow_down, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        'Desliza para ver más',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
-              ),
+                if (widget.onOpenSettings != null)
+                  TextButton(
+                    onPressed: widget.onOpenSettings,
+                    child: const Text('Ajustar'),
+                  ),
+              ],
             ),
           ),
         ],
@@ -349,86 +217,16 @@ class _SetupScreenState extends State<SetupScreen> {
     return TextField(
       controller: c,
       textAlign: TextAlign.center,
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(fontSize: 13),
+        labelStyle: const TextStyle(fontSize: 15),
         border: const OutlineInputBorder(),
-        isDense: true,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
+          horizontal: 16,
+          vertical: 16,
         ),
       ),
-    );
-  }
-
-  Widget _divider() => Divider(
-    height: 14,
-    thickness: 1,
-    color: Theme.of(context).dividerColor.withValues(alpha: 0.6),
-  );
-
-  /// Fila de ajuste: título a la izquierda y control numérico a la derecha.
-  Widget _configRow(
-    String title,
-    int value,
-    int min,
-    int max,
-    ValueChanged<int> onChanged, {
-    String suffix = 'puntos',
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-          ),
-        ),
-        _circleBtn(
-          Icons.remove,
-          value > min ? () => onChanged(value - 1) : null,
-        ),
-        SizedBox(
-          width: 58,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$value',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-              ),
-              if (suffix.isNotEmpty)
-                Text(
-                  suffix,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Theme.of(context).textTheme.bodySmall?.color,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        _circleBtn(Icons.add, value < max ? () => onChanged(value + 1) : null),
-      ],
-    );
-  }
-
-  Widget _circleBtn(IconData icon, VoidCallback? onTap) {
-    return IconButton.filledTonal(
-      onPressed: onTap,
-      iconSize: 20,
-      padding: const EdgeInsets.all(6),
-      constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
-      visualDensity: VisualDensity.compact,
-      icon: Icon(icon),
     );
   }
 }
