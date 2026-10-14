@@ -48,6 +48,9 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   bool _controlsVisible = true;
   Timer? _controlsTimer;
 
+  // Evita abrir el banner de fin de partido dos veces a la vez.
+  bool _endDialogOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -113,6 +116,12 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
 
   // ---------------- Puntos ----------------
   void _onPoint(String team, ScoreboardProvider score) {
+    // Si el partido ya terminó, tocar el marcador vuelve a mostrar el banner
+    // de fin de partido (en lugar de no hacer nada).
+    if (score.matchFinished) {
+      _reabrirFinDePartido(score);
+      return;
+    }
     if (_switchBanner) {
       _switchTimer?.cancel();
       setState(() => _switchBanner = false);
@@ -169,7 +178,16 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     final record = score.buildRecord();
     if (mounted) await context.read<MatchesProvider>().addMatch(record);
     if (!mounted) return;
+    await _presentEndDialog(score, record);
+  }
 
+  /// Muestra el banner de fin de partido (sin volver a guardar en historial).
+  Future<void> _presentEndDialog(
+    ScoreboardProvider score,
+    MatchRecord record,
+  ) async {
+    if (_endDialogOpen) return;
+    _endDialogOpen = true;
     final action = await showDialog<String>(
       context: context,
       barrierDismissible: true,
@@ -186,101 +204,111 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.60,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: Text(
-                    record.teamA,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        record.teamA,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        record.teamB,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // Marcador: en "mejor de 3" se muestran los SETS ganados
+                // (2 - 1); en partido único, los puntos del set (21 - 18).
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        record.type == MatchType.bestOf3
+                            ? '${record.setsWonA}'
+                            : '${record.pointsA}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        record.type == MatchType.bestOf3
+                            ? '${record.setsWonB}'
+                            : '${record.pointsB}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  record.headlineLabel,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
                   ),
                 ),
-                Expanded(
-                  child: Text(
-                    record.teamB,
+                if (record.type == MatchType.bestOf3 &&
+                    record.completedSets.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    record.setsDetail,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Text(
+                  '🏆 Ganó ${record.winnerName}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Guardado en el historial ✅',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Toca fuera para volver al tablero',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            // Marcador: en "mejor de 3" se muestran los SETS ganados
-            // (2 - 1); en partido único, los puntos del set (21 - 18).
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    record.type == MatchType.bestOf3
-                        ? '${record.setsWonA}'
-                        : '${record.pointsA}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    record.type == MatchType.bestOf3
-                        ? '${record.setsWonB}'
-                        : '${record.pointsB}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              record.headlineLabel,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).textTheme.bodySmall?.color,
-              ),
-            ),
-            if (record.type == MatchType.bestOf3 &&
-                record.completedSets.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                record.setsDetail,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context).textTheme.bodySmall?.color,
-                ),
-              ),
-            ],
-            const SizedBox(height: 10),
-            Text(
-              '🏆 Ganó ${record.winnerName}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Guardado en el historial ✅',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Toca fuera para volver al tablero',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(context).textTheme.bodySmall?.color,
-              ),
-            ),
-          ],
+          ),
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
@@ -311,6 +339,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
       ),
     );
 
+    _endDialogOpen = false;
     if (!mounted) return;
     if (action == 'config') {
       _irANuevaConfiguracion();
@@ -357,6 +386,13 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     if (ok == true) {
       score.updateNames(a.text, b.text);
     }
+  }
+
+  /// Al tocar el marcador cuando el partido ya terminó, volvemos a mostrar el
+  /// banner para dejar claro que hay que empezar un partido nuevo.
+  void _reabrirFinDePartido(ScoreboardProvider score) {
+    if (!score.matchFinished || _endDialogOpen) return;
+    _presentEndDialog(score, score.buildRecord());
   }
 
   // ---------------- Build ----------------

@@ -7,6 +7,7 @@ import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_menu.dart';
 import '../widgets/bouncing_ball.dart';
+import 'privacy_screen.dart';
 
 /// Ajustes por defecto del marcador (se aplican al configurar cada partido).
 /// Cabecera compacta y disposición en 2 columnas para aprovechar el horizontal.
@@ -117,10 +118,7 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(
-                          Icons.style,
-                          color: AppColors.sunsetDeep,
-                        ),
+                        const Icon(Icons.style, color: AppColors.sunsetDeep),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
@@ -242,20 +240,16 @@ class SettingsScreen extends StatelessWidget {
                   context,
                   titulo: 'Equipo A',
                   seleccionado: s.defaultColorA,
-                  onSelect: (c) => _apply(
-                    context,
-                    s.copyWith(defaultColorA: c.toARGB32()),
-                  ),
+                  onSelect: (c) =>
+                      _apply(context, s.copyWith(defaultColorA: c.toARGB32())),
                 ),
                 const SizedBox(height: 16),
                 _filaColor(
                   context,
                   titulo: 'Equipo B',
                   seleccionado: s.defaultColorB,
-                  onSelect: (c) => _apply(
-                    context,
-                    s.copyWith(defaultColorB: c.toARGB32()),
-                  ),
+                  onSelect: (c) =>
+                      _apply(context, s.copyWith(defaultColorB: c.toARGB32())),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -380,15 +374,32 @@ class SettingsScreen extends StatelessWidget {
         Card(
           margin: EdgeInsets.zero,
           clipBehavior: Clip.antiAlias,
-          child: ListTile(
-            onTap: () => _showAbout(context),
-            leading: const Icon(
-              Icons.sports_volleyball,
-              color: AppColors.sunsetDeep,
-            ),
-            title: const Text('Voley Score'),
-            subtitle: const Text('Marcador de vóley playa · versión 2.0'),
-            trailing: const Icon(Icons.info_outline),
+          child: Column(
+            children: [
+              ListTile(
+                onTap: () => _showAbout(context),
+                leading: const Icon(
+                  Icons.sports_volleyball,
+                  color: AppColors.sunsetDeep,
+                ),
+                title: const Text('Voley Score'),
+                subtitle: const Text('Marcador de vóley playa · versión 2.0'),
+                trailing: const Icon(Icons.info_outline),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PrivacyScreen()),
+                ),
+                leading: const Icon(
+                  Icons.privacy_tip_outlined,
+                  color: AppColors.sunsetDeep,
+                ),
+                title: const Text('Política de privacidad'),
+                subtitle: const Text('Cómo tratamos tus datos'),
+                trailing: const Icon(Icons.chevron_right),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 24),
