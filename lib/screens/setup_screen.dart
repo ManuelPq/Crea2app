@@ -8,8 +8,7 @@ import '../widgets/bouncing_ball.dart';
 
 /// Pantalla previa al partido, deliberadamente sencilla:
 /// solo los nombres de los equipos + EMPEZAR.
-/// Los puntos y el cambio de pista se toman de los Ajustes
-/// (pero se muestran aquí a modo de resumen, con acceso directo).
+/// Los puntos y el cambio de pista se toman de los Ajustes.
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key, this.onStart, this.onOpenSettings});
 
@@ -56,8 +55,6 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final score = context.watch<ScoreboardProvider>();
-    final cfg = score.settings;
 
     return Scaffold(
       body: Container(
@@ -86,7 +83,7 @@ class _SetupScreenState extends State<SetupScreen> {
                     SizedBox(width: compacto ? 8 : 14),
                     Expanded(
                       flex: 68,
-                      child: _tarjeta(compacto: compacto, dark: dark, cfg: cfg),
+                      child: _tarjeta(compacto: compacto, dark: dark),
                     ),
                   ],
                 ),
@@ -99,14 +96,14 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Widget _columnaIzquierda({required bool compacto}) {
-    final ballSize = compacto ? 78.0 : 118.0;
+    final ballSize = compacto ? 92.0 : 140.0;
     final titleSize = compacto ? 28.0 : 40.0;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         BouncingBall(size: ballSize),
-        SizedBox(height: compacto ? 6 : 12),
+        SizedBox(height: compacto ? 6 : 14),
         Text(
           'Nuevo partido',
           textAlign: TextAlign.center,
@@ -118,49 +115,22 @@ class _SetupScreenState extends State<SetupScreen> {
           ),
         ),
         if (!compacto) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
-            'Configura los equipos y pulsa EMPEZAR',
+            'Pon el nombre a cada equipo\ny pulsa EMPEZAR',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
+              height: 1.3,
               color: Colors.white.withValues(alpha: 0.92),
             ),
           ),
         ],
-        SizedBox(height: compacto ? 10 : 16),
-        SizedBox(
-          width: double.infinity,
-          height: compacto ? 48 : 56,
-          child: FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.sunsetDeep,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            onPressed: _start,
-            icon: const Icon(Icons.play_arrow),
-            label: const Text(
-              'EMPEZAR',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
 
-  Widget _tarjeta({
-    required bool compacto,
-    required bool dark,
-    required AppSettings cfg,
-  }) {
+  Widget _tarjeta({required bool compacto, required bool dark}) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compacto ? 20 : 30,
@@ -178,34 +148,28 @@ class _SetupScreenState extends State<SetupScreen> {
           SizedBox(height: compacto ? 12 : 18),
           _teamField(_b, 'Equipo B'),
           SizedBox(height: compacto ? 12 : 20),
-          // Resumen de la configuración (viene de Ajustes)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.sunsetOrange.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.tune, color: AppColors.sunsetDeep, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '${cfg.defaultType == MatchType.single ? "Partido único" : "Mejor de 3"} · '
-                    'a ${cfg.defaultTargetPoints} pts · '
-                    '${cfg.defaultSwitchEvery == 0 ? "sin cambios" : "cambio de pista cada ${cfg.defaultSwitchEvery}"}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+          // Botón EMPEZAR (en naranja) en el espacio que antes ocupaba el
+          // resumen de ajustes.
+          SizedBox(
+            height: compacto ? 50 : 60,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.sunsetDeep,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                if (widget.onOpenSettings != null)
-                  TextButton(
-                    onPressed: widget.onOpenSettings,
-                    child: const Text('Ajustar'),
-                  ),
-              ],
+              ),
+              onPressed: _start,
+              icon: const Icon(Icons.play_arrow, size: 26),
+              label: const Text(
+                'EMPEZAR',
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
             ),
           ),
         ],

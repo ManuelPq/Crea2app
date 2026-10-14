@@ -215,7 +215,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                     '${record.pointsA}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 52,
+                      fontSize: 40,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -225,27 +225,23 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                     '${record.pointsB}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 52,
+                      fontSize: 40,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               '🏆 Ganó ${record.winnerName}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 4),
-            Text(
-              '${record.teamA} ${record.pointsA} - ${record.pointsB} ${record.teamB}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 13),
-            ),
-            const SizedBox(height: 6),
             const Text(
               'Guardado en el historial ✅',
+              textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12),
             ),
           ],
@@ -385,11 +381,9 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                             gradient: AppGradients.teamA,
                             align: Alignment.centerLeft,
                             onAdd: () {
-                              _mostrarControles();
                               _onPoint('a', score);
                             },
                             onRemove: () {
-                              _mostrarControles();
                               score.removePoint('a');
                             },
                             onEditName: () => _editNames(score),
@@ -405,11 +399,9 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                             gradient: AppGradients.teamB,
                             align: Alignment.centerRight,
                             onAdd: () {
-                              _mostrarControles();
                               _onPoint('b', score);
                             },
                             onRemove: () {
-                              _mostrarControles();
                               score.removePoint('b');
                             },
                             onEditName: () => _editNames(score),
@@ -428,26 +420,47 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     );
   }
 
-  /// Asa fina que se toca para volver a mostrar la barra superior.
+  /// Asa flotante que se toca para volver a mostrar la barra superior.
   Widget _handleBar() {
     return AnimatedSize(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
       child: _controlsVisible
           ? const SizedBox(width: double.infinity)
-          : GestureDetector(
-              onTap: _mostrarControles,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Center(
+          : Align(
+              alignment: Alignment.topCenter,
+              child: GestureDetector(
+                onTap: _mostrarControles,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 6, bottom: 2),
                   child: Container(
-                    width: 46,
-                    height: 5,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.black.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Mostrar barra',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -484,12 +497,6 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
             tooltip: 'Deshacer',
             onPressed: score.canUndo ? score.undo : null,
             icon: const Icon(Icons.undo),
-          ),
-          const SizedBox(width: 6),
-          IconButton.filledTonal(
-            tooltip: 'Nuevo partido',
-            onPressed: _irANuevaConfiguracion,
-            icon: const Icon(Icons.tune),
           ),
           const SizedBox(width: 6),
           IconButton.filledTonal(
@@ -582,6 +589,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                 children: [
                   const Text(
                     'CAMBIO DE PISTA',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 9,
@@ -591,6 +599,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                   ),
                   Text(
                     'en $remaining ${remaining == 1 ? "punto" : "puntos"}',
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,

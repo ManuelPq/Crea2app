@@ -59,7 +59,8 @@ class AppMenuButton extends StatelessWidget {
           tooltip: 'Menú',
           onPressed: () =>
               controller.isOpen ? controller.close() : controller.open(),
-          icon: const Icon(Icons.menu),
+          // Icono tipo "equalizador" (tune) para el menú.
+          icon: const Icon(Icons.tune),
         );
       },
     );

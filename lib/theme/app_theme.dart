@@ -11,8 +11,8 @@ class AppColors {
   static const Color oceanBlue = Color(0xFF0E7C9B);
 
   // Equipos
-  static const Color teamA = Color(0xFFFF7A00); // naranja
-  static const Color teamB = Color(0xFF0091AD); // azul océano
+  static const Color teamA = Color(0xFFE53935); // rojo
+  static const Color teamB = Color(0xFF1E6FEB); // azul
 
   // Neutros
   static const Color sand = Color(0xFFFFF6EA);
@@ -37,13 +37,13 @@ class AppGradients {
   static const LinearGradient teamA = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [AppColors.sunYellow, AppColors.sunsetOrange],
+    colors: [Color(0xFFEF5350), Color(0xFFC62828)],
   );
 
   static const LinearGradient teamB = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [AppColors.turquoise, AppColors.oceanBlue],
+    colors: [Color(0xFF42A5F5), Color(0xFF0D47A1)],
   );
 }
 

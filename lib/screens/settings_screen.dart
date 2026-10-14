@@ -6,6 +6,7 @@ import '../providers/scoreboard_provider.dart';
 import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_menu.dart';
+import '../widgets/bouncing_ball.dart';
 
 /// Ajustes por defecto del marcador (se aplican al configurar cada partido).
 /// Cabecera compacta y disposición en 2 columnas para aprovechar el horizontal.
@@ -54,7 +55,7 @@ class SettingsScreen extends StatelessWidget {
           final columnas = c.maxWidth < 620;
           if (columnas) {
             return ListView(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 40),
               children: [
                 _bloquePartido(context, s),
                 const SizedBox(height: 14),
@@ -105,29 +106,58 @@ class SettingsScreen extends StatelessWidget {
           margin: EdgeInsets.zero,
           child: Column(
             children: [
-              ListTile(
-                leading: const Icon(Icons.style, color: AppColors.sunsetDeep),
-                title: const Text('Tipo de partido'),
-                subtitle: Text(s.defaultType.label),
-                trailing: SegmentedButton<MatchType>(
-                  showSelectedIcon: false,
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  segments: const [
-                    ButtonSegment(
-                      value: MatchType.single,
-                      label: Text('Único'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.style,
+                          color: AppColors.sunsetDeep,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Tipo de partido'),
+                              Text(
+                                s.defaultType.label,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodySmall?.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    ButtonSegment(
-                      value: MatchType.bestOf3,
-                      label: Text('Mejor de 3'),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<MatchType>(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(
+                            value: MatchType.single,
+                            label: Text('Único'),
+                          ),
+                          ButtonSegment(
+                            value: MatchType.bestOf3,
+                            label: Text('Mejor de 3'),
+                          ),
+                        ],
+                        selected: {s.defaultType},
+                        onSelectionChanged: (v) =>
+                            _apply(context, s.copyWith(defaultType: v.first)),
+                      ),
                     ),
                   ],
-                  selected: {s.defaultType},
-                  onSelectionChanged: (v) =>
-                      _apply(context, s.copyWith(defaultType: v.first)),
                 ),
               ),
               const Divider(height: 1),
@@ -233,15 +263,77 @@ class SettingsScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _section('Acerca de'),
-        const Card(
+        Card(
           margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
           child: ListTile(
-            leading: Icon(Icons.sports_volleyball, color: AppColors.sunsetDeep),
-            title: Text('Voley Score'),
-            subtitle: Text('Marcador de vóley playa · versión 2.0'),
+            onTap: () => _showAbout(context),
+            leading: const Icon(
+              Icons.sports_volleyball,
+              color: AppColors.sunsetDeep,
+            ),
+            title: const Text('Voley Score'),
+            subtitle: const Text('Marcador de vóley playa · versión 2.0'),
+            trailing: const Icon(Icons.info_outline),
           ),
         ),
+        const SizedBox(height: 24),
       ],
+    );
+  }
+
+  void _showAbout(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BouncingBall(size: 130),
+              const SizedBox(height: 16),
+              const Text(
+                'Voley Score',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Marcador de vóley playa · versión 2.0',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Pensado para jugar a pie de pista: marcador grande, '
+                'cambio de pista automático cada 7 puntos e historial de '
+                'partidos. Coloca el móvil en horizontal durante el partido.',
+                textAlign: TextAlign.center,
+                style: TextStyle(height: 1.4),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: const [
+                  _Chip(icon: Icons.sports_volleyball, label: 'Vóley playa'),
+                  _Chip(icon: Icons.timer, label: 'Cronómetro'),
+                  _Chip(icon: Icons.history, label: 'Historial'),
+                  _Chip(icon: Icons.swap_horiz, label: 'Cambio de pista'),
+                ],
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -301,5 +393,34 @@ class SettingsScreen extends StatelessWidget {
     final storage = context.read<StorageService>();
     score.applySettings(newSettings);
     await storage.saveSettings(newSettings);
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.sunsetOrange.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppColors.sunsetDeep),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          ),
+        ],
+      ),
+    );
   }
 }

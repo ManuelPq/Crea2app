@@ -135,163 +135,225 @@ class _MatchList extends StatelessWidget {
   }
 }
 
-class _MatchCard extends StatelessWidget {
+class _MatchCard extends StatefulWidget {
   const _MatchCard({required this.match, required this.isTrash});
 
   final MatchRecord match;
   final bool isTrash;
 
   @override
+  State<_MatchCard> createState() => _MatchCardState();
+}
+
+class _MatchCardState extends State<_MatchCard> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final match = widget.match;
+    final isTrash = widget.isTrash;
     final provider = context.read<MatchesProvider>();
     final dateFmt = DateFormat('dd/MM/yy · HH:mm');
     final isMulti = match.type == MatchType.bestOf3;
-
     final scoreText = isMulti ? match.setsScore : match.finalScore;
+    final sub = Theme.of(context).textTheme.bodySmall?.color;
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            // Resultado destacado (izquierda)
-            Container(
-              width: 70,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                gradient: AppGradients.sunset,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    scoreText,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 20,
-                    ),
-                  ),
-                  Text(
-                    isMulti ? 'sets' : 'puntos',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            // Información central, repartida horizontalmente
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${match.teamA}  vs  ${match.teamB}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          // En pantallas estrechas (vertical) la tarjeta se puede desplegar
+          // al tocarla para ver toda la información.
+          final narrow = c.maxWidth < 480;
+          final showDetail = !narrow || _expanded;
+
+          final card = InkWell(
+            onTap: narrow ? () => setState(() => _expanded = !_expanded) : null,
+            child: MouseRegion(
+              onEnter: narrow ? (_) => setState(() => _expanded = true) : null,
+              onExit: narrow ? (_) => setState(() => _expanded = false) : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Resultado destacado (izquierda) — una sola línea
+                    Container(
+                      width: 92,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: AppGradients.sunset,
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.sunsetOrange.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '🏆 ${match.winnerName}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.sunsetDeep,
-                            fontSize: 13,
+                      child: Column(
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              scoreText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 22,
+                              ),
+                            ),
                           ),
+                          Text(
+                            isMulti ? 'sets' : 'puntos',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    // Información, repartida horizontalmente
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${match.teamA}  vs  ${match.teamB}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.sunsetOrange.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '🏆 ${match.winnerName}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.sunsetDeep,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (showDetail) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    isMulti
+                                        ? match.setsDetail
+                                        : '${match.teamA} ${match.pointsA} - ${match.pointsB} ${match.teamB}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 13, color: sub),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  '⏱ ${_dur(match.duration)}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: sub?.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  dateFmt.format(match.playedAt),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: sub?.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Acciones (derecha)
+                    if (!isTrash)
+                      IconButton(
+                        tooltip: 'Mover a la papelera',
+                        onPressed: () {
+                          provider.moveToTrash(match.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Partido enviado a la papelera 🗑️'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.delete_outline),
+                      )
+                    else ...[
+                      IconButton(
+                        tooltip: 'Restaurar',
+                        onPressed: () => provider.restore(match.id),
+                        icon: const Icon(Icons.restore),
+                      ),
+                      IconButton(
+                        tooltip: 'Eliminar definitivamente',
+                        onPressed: () => _confirmDelete(context, provider),
+                        icon: const Icon(
+                          Icons.delete_forever,
+                          color: Colors.redAccent,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
+                  ],
+                ),
+              ),
+            ),
+          );
+
+          if (!narrow) return card;
+          // Indicador de que se puede desplegar (solo en vertical)
+          return Column(
+            children: [
+              card,
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 14, bottom: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Flexible(
-                        child: Text(
-                          isMulti
-                              ? match.setsDetail
-                              : '${match.teamA} ${match.pointsA} - ${match.pointsB} ${match.teamB}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Theme.of(context).textTheme.bodySmall?.color,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
                       Text(
-                        '⏱ ${_dur(match.duration)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.color?.withValues(alpha: 0.8),
-                        ),
+                        _expanded ? 'Menos' : 'Más info',
+                        style: TextStyle(fontSize: 11, color: sub),
                       ),
-                      const Spacer(),
-                      Text(
-                        dateFmt.format(match.playedAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.color?.withValues(alpha: 0.8),
-                        ),
+                      Icon(
+                        _expanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        size: 16,
+                        color: sub,
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 6),
-            // Acciones (derecha)
-            if (!isTrash)
-              IconButton(
-                tooltip: 'Mover a la papelera',
-                onPressed: () {
-                  provider.moveToTrash(match.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Partido enviado a la papelera 🗑️'),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.delete_outline),
-              )
-            else ...[
-              IconButton(
-                tooltip: 'Restaurar',
-                onPressed: () => provider.restore(match.id),
-                icon: const Icon(Icons.restore),
-              ),
-              IconButton(
-                tooltip: 'Eliminar definitivamente',
-                onPressed: () => _confirmDelete(context, provider),
-                icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                ),
               ),
             ],
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -300,6 +362,7 @@ class _MatchCard extends StatelessWidget {
     BuildContext context,
     MatchesProvider provider,
   ) async {
+    final match = widget.match;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
