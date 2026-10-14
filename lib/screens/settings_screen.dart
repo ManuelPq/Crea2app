@@ -59,6 +59,8 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 _bloquePartido(context, s),
                 const SizedBox(height: 14),
+                _bloqueColores(context, s),
+                const SizedBox(height: 14),
                 _bloqueExperiencia(context, s),
                 const SizedBox(height: 14),
                 _bloqueAcerca(context),
@@ -74,6 +76,8 @@ class SettingsScreen extends StatelessWidget {
                   child: ListView(
                     children: [
                       _bloquePartido(context, s),
+                      const SizedBox(height: 16),
+                      _bloqueColores(context, s),
                       const SizedBox(height: 16),
                       _bloqueAcerca(context),
                     ],
@@ -219,6 +223,116 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _bloqueColores(BuildContext context, AppSettings s) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _section('Colores de los equipos'),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _filaColor(
+                  context,
+                  titulo: 'Equipo A',
+                  seleccionado: s.defaultColorA,
+                  onSelect: (c) => _apply(
+                    context,
+                    s.copyWith(defaultColorA: c.toARGB32()),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _filaColor(
+                  context,
+                  titulo: 'Equipo B',
+                  seleccionado: s.defaultColorB,
+                  onSelect: (c) => _apply(
+                    context,
+                    s.copyWith(defaultColorB: c.toARGB32()),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Elige el color de fondo de cada equipo. Se usa al crear '
+                  'un partido nuevo.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _filaColor(
+    BuildContext context, {
+    required String titulo,
+    required int seleccionado,
+    required ValueChanged<Color> onSelect,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          titulo,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final c in AppColors.teamPalette)
+              _colorDot(
+                color: c,
+                selected: c.toARGB32() == seleccionado,
+                onTap: () => onSelect(c),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _colorDot({
+    required Color color,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? Colors.white : Colors.transparent,
+            width: 3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: selected ? 0.35 : 0.15),
+              blurRadius: selected ? 8 : 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: selected
+            ? const Icon(Icons.check, color: Colors.white, size: 20)
+            : null,
+      ),
     );
   }
 

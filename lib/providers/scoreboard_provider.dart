@@ -224,6 +224,8 @@ class ScoreboardProvider extends ChangeNotifier {
       switchEvery: setup.switchEvery,
       playedAt: DateTime.now(),
       duration: _stopwatch.elapsed,
+      colorA: setup.colorA,
+      colorB: setup.colorB,
     );
   }
 

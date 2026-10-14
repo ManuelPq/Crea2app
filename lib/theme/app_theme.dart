@@ -14,6 +14,20 @@ class AppColors {
   static const Color teamA = Color(0xFFE53935); // rojo
   static const Color teamB = Color(0xFF1E6FEB); // azul
 
+  /// Colores elegibles para el fondo de cada equipo (Ajustes).
+  static const List<Color> teamPalette = [
+    Color(0xFFE53935), // rojo
+    Color(0xFF1E6FEB), // azul
+    Color(0xFF2E7D32), // verde
+    Color(0xFFF25C05), // naranja
+    Color(0xFF7B1FA2), // morado
+    Color(0xFF00897B), // turquesa
+    Color(0xFFD81B60), // rosa
+    Color(0xFF3949AB), // índigo
+    Color(0xFF455A64), // gris
+    Color(0xFFF9A825), // ámbar
+  ];
+
   // Neutros
   static const Color sand = Color(0xFFFFF6EA);
   static const Color darkBg = Color(0xFF12161C);
@@ -45,6 +59,23 @@ class AppGradients {
     end: Alignment.bottomRight,
     colors: [Color(0xFF42A5F5), Color(0xFF0D47A1)],
   );
+
+  /// Gradiente para el fondo de un equipo a partir de su color base:
+  /// una versión clara arriba y una más oscura abajo.
+  static LinearGradient forTeam(Color base) {
+    final hsl = HSLColor.fromColor(base);
+    final light = hsl
+        .withLightness((hsl.lightness + 0.12).clamp(0.0, 1.0))
+        .toColor();
+    final dark = hsl
+        .withLightness((hsl.lightness - 0.18).clamp(0.0, 1.0))
+        .toColor();
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [light, base, dark],
+    );
+  }
 }
 
 class AppTheme {

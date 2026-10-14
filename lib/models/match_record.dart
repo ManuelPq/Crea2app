@@ -27,6 +27,10 @@ class GameSetup {
   final int
   decidingPoints; // puntos del set decisivo en bestOf3 (por defecto 15)
 
+  /// Color de fondo de cada equipo (ARGB).
+  final int colorA;
+  final int colorB;
+
   const GameSetup({
     this.teamA = 'Equipo A',
     this.teamB = 'Equipo B',
@@ -34,6 +38,8 @@ class GameSetup {
     this.targetPoints = 21,
     this.switchEvery = 7,
     this.decidingPoints = 15,
+    this.colorA = 0xFFE53935, // rojo
+    this.colorB = 0xFF1E6FEB, // azul
   });
 
   GameSetup copyWith({
@@ -43,6 +49,8 @@ class GameSetup {
     int? targetPoints,
     int? switchEvery,
     int? decidingPoints,
+    int? colorA,
+    int? colorB,
   }) => GameSetup(
     teamA: teamA ?? this.teamA,
     teamB: teamB ?? this.teamB,
@@ -50,6 +58,8 @@ class GameSetup {
     targetPoints: targetPoints ?? this.targetPoints,
     switchEvery: switchEvery ?? this.switchEvery,
     decidingPoints: decidingPoints ?? this.decidingPoints,
+    colorA: colorA ?? this.colorA,
+    colorB: colorB ?? this.colorB,
   );
 }
 
@@ -83,6 +93,10 @@ class MatchRecord {
   final int switchEvery;
   final DateTime playedAt;
   final Duration duration;
+
+  /// Color de fondo de cada equipo (ARGB). Opcional para datos antiguos.
+  final int? colorA;
+  final int? colorB;
   MatchStatus status;
 
   MatchRecord({
@@ -99,6 +113,8 @@ class MatchRecord {
     this.switchEvery = 7,
     required this.playedAt,
     this.duration = Duration.zero,
+    this.colorA,
+    this.colorB,
     this.status = MatchStatus.finished,
   });
 
@@ -130,6 +146,8 @@ class MatchRecord {
     'switchEvery': switchEvery,
     'playedAt': playedAt.toIso8601String(),
     'durationMs': duration.inMilliseconds,
+    'colorA': colorA,
+    'colorB': colorB,
     'status': status.name,
   };
 
@@ -153,6 +171,8 @@ class MatchRecord {
     playedAt:
         DateTime.tryParse(j['playedAt'] as String? ?? '') ?? DateTime.now(),
     duration: Duration(milliseconds: (j['durationMs'] ?? 0) as int),
+    colorA: (j['colorA'] as num?)?.toInt(),
+    colorB: (j['colorB'] as num?)?.toInt(),
     status: MatchStatus.values.firstWhere(
       (s) => s.name == j['status'],
       orElse: () => MatchStatus.finished,
@@ -180,6 +200,10 @@ class AppSettings {
   final bool soundEnabled;
   final bool darkMode;
 
+  /// Color de fondo por defecto de cada equipo (ARGB).
+  final int defaultColorA;
+  final int defaultColorB;
+
   const AppSettings({
     this.defaultType = MatchType.single,
     this.defaultTargetPoints = 21,
@@ -187,6 +211,8 @@ class AppSettings {
     this.defaultDecidingPoints = 15,
     this.soundEnabled = true,
     this.darkMode = false,
+    this.defaultColorA = 0xFFE53935, // rojo
+    this.defaultColorB = 0xFF1E6FEB, // azul
   });
 
   GameSetup get defaultSetup => GameSetup(
@@ -194,6 +220,8 @@ class AppSettings {
     targetPoints: defaultTargetPoints,
     switchEvery: defaultSwitchEvery,
     decidingPoints: defaultDecidingPoints,
+    colorA: defaultColorA,
+    colorB: defaultColorB,
   );
 
   AppSettings copyWith({
@@ -203,6 +231,8 @@ class AppSettings {
     int? defaultDecidingPoints,
     bool? soundEnabled,
     bool? darkMode,
+    int? defaultColorA,
+    int? defaultColorB,
   }) => AppSettings(
     defaultType: defaultType ?? this.defaultType,
     defaultTargetPoints: defaultTargetPoints ?? this.defaultTargetPoints,
@@ -210,5 +240,7 @@ class AppSettings {
     defaultDecidingPoints: defaultDecidingPoints ?? this.defaultDecidingPoints,
     soundEnabled: soundEnabled ?? this.soundEnabled,
     darkMode: darkMode ?? this.darkMode,
+    defaultColorA: defaultColorA ?? this.defaultColorA,
+    defaultColorB: defaultColorB ?? this.defaultColorB,
   );
 }

@@ -344,6 +344,30 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     final score = context.watch<ScoreboardProvider>();
     final dark = Theme.of(context).brightness == Brightness.dark;
 
+    // Construye el panel de un equipo colocado en un lado concreto.
+    // El contenido se alinea según el LADO (no según el equipo), de modo que
+    // al cambiar de pista los paneles se intercambian de sitio.
+    Widget panelFor(String team, Alignment side) {
+      final isA = team == 'a';
+      return _TeamPanel(
+        label: isA ? 'A' : 'B',
+        name: isA ? score.setup.teamA : score.setup.teamB,
+        points: isA ? score.pointsA : score.pointsB,
+        setsWon: isA ? score.setsWonA : score.setsWonB,
+        gradient: AppGradients.forTeam(
+          Color(isA ? score.setup.colorA : score.setup.colorB),
+        ),
+        align: side,
+        onAdd: () => _onPoint(team, score),
+        onRemove: () => score.removePoint(team),
+        onEditName: () => _editNames(score),
+      );
+    }
+
+    // Al cambiar de pista, los equipos intercambian su lado en la pantalla.
+    final leftTeam = score.courtSwitched ? 'b' : 'a';
+    final rightTeam = score.courtSwitched ? 'a' : 'b';
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -373,39 +397,11 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                     child: Row(
                       children: [
                         Expanded(
-                          child: _TeamPanel(
-                            label: 'A',
-                            name: score.setup.teamA,
-                            points: score.pointsA,
-                            setsWon: score.setsWonA,
-                            gradient: AppGradients.teamA,
-                            align: Alignment.centerLeft,
-                            onAdd: () {
-                              _onPoint('a', score);
-                            },
-                            onRemove: () {
-                              score.removePoint('a');
-                            },
-                            onEditName: () => _editNames(score),
-                          ),
+                          child: panelFor(leftTeam, Alignment.centerLeft),
                         ),
                         _centerStrip(score),
                         Expanded(
-                          child: _TeamPanel(
-                            label: 'B',
-                            name: score.setup.teamB,
-                            points: score.pointsB,
-                            setsWon: score.setsWonB,
-                            gradient: AppGradients.teamB,
-                            align: Alignment.centerRight,
-                            onAdd: () {
-                              _onPoint('b', score);
-                            },
-                            onRemove: () {
-                              score.removePoint('b');
-                            },
-                            onEditName: () => _editNames(score),
-                          ),
+                          child: panelFor(rightTeam, Alignment.centerRight),
                         ),
                       ],
                     ),

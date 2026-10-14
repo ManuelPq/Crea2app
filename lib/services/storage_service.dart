@@ -11,6 +11,8 @@ class StorageService {
   static const _kDecidingPoints = 'default_deciding_points';
   static const _kSound = 'sound_enabled';
   static const _kDark = 'dark_mode';
+  static const _kColorA = 'team_color_a';
+  static const _kColorB = 'team_color_b';
 
   SharedPreferences? _prefs;
 
@@ -42,6 +44,8 @@ class StorageService {
       defaultDecidingPoints: p.getInt(_kDecidingPoints) ?? 15,
       soundEnabled: p.getBool(_kSound) ?? true,
       darkMode: p.getBool(_kDark) ?? false,
+      defaultColorA: p.getInt(_kColorA) ?? 0xFFE53935,
+      defaultColorB: p.getInt(_kColorB) ?? 0xFF1E6FEB,
     );
   }
 
@@ -53,5 +57,7 @@ class StorageService {
     await p.setInt(_kDecidingPoints, s.defaultDecidingPoints);
     await p.setBool(_kSound, s.soundEnabled);
     await p.setBool(_kDark, s.darkMode);
+    await p.setInt(_kColorA, s.defaultColorA);
+    await p.setInt(_kColorB, s.defaultColorB);
   }
 }
