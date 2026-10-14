@@ -1,16 +1,37 @@
-# voley_score
+# Crea2app
 
-A new Flutter project.
+Desarrollo de aplicaciones móviles.
 
-## Getting Started
+Este repositorio contiene el código de nuestras aplicaciones y la web pública del estudio.
 
-This project is a starting point for a Flutter application.
+## 🌐 Web
 
-A few resources to get you started if this is your first Flutter project:
+- [Inicio](https://manuelpq.github.io/Crea2app/index.html)
+- [Política de privacidad de Voley Score](https://manuelpq.github.io/Crea2app/voleyscore.html)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 📱 Apps
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Voley Score
+Marcador de vóley playa con historial de partidos.
+
+- **Paquete:** `com.voleyscore.scoreboard`
+- **Versión:** 1.0.0
+- **Plataforma:** Android
+- **Funciones:** marcador de puntos y sets, cambio de pista automático, modo partido
+  único o al mejor de 3 sets, historial con parciales, colores de equipo personalizables
+  y funcionamiento sin conexión.
+
+## 🗂️ Estructura
+
+```
+lib/        Código Flutter de la app
+android/    Configuración Android (incluye la firma release, no versionada)
+assets/     Recursos (iconos, imágenes)
+publish/    Materiales de publicación en Google Play (textos, guía)
+store/      Activos gráficos de tienda (icono, gráfico destacado, capturas)
+privacy/    Páginas web (landing y política de privacidad)
+```
+
+## ✉️ Contacto
+
+crear2app@gmail.com
