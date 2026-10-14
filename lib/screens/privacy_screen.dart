@@ -96,7 +96,7 @@ class PrivacyScreen extends StatelessWidget {
             titulo: '7. Contacto',
             texto:
                 'Si tienes cualquier duda sobre esta política de privacidad, '
-                'puedes escribirnos a: soporte@voleyscore.app',
+                'puedes escribirnos a: crear2app@gmail.com',
           ),
           const SizedBox(height: 8),
           Container(
