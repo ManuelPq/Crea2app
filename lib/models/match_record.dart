@@ -118,7 +118,10 @@ class MatchRecord {
     this.status = MatchStatus.finished,
   });
 
-  bool get winnerIsA => pointsA > pointsB;
+  /// Gana el equipo A. En "al mejor de 3" manda el número de sets ganados
+  /// (los puntos del último set se reinician a 0, por eso no sirven aquí).
+  bool get winnerIsA =>
+      type == MatchType.bestOf3 ? setsWonA > setsWonB : pointsA > pointsB;
   String get winnerName => winnerIsA ? teamA : teamB;
   String get loserName => winnerIsA ? teamB : teamA;
 
@@ -131,6 +134,15 @@ class MatchRecord {
   /// Detalle de sets, p.ej. "21-18 · 19-21 · 15-11".
   String get setsDetail =>
       completedSets.map((s) => '${s.pointsA}-${s.pointsB}').join('  ·  ');
+
+  /// Marcador principal que se muestra en grande:
+  /// - bestOf3 -> sets ganados ("2 - 1")
+  /// - single  -> puntos del set ("21 - 18")
+  String get headlineScore =>
+      type == MatchType.bestOf3 ? setsScore : finalScore;
+
+  /// Etiqueta del marcador principal.
+  String get headlineLabel => type == MatchType.bestOf3 ? 'sets' : 'puntos';
 
   Map<String, dynamic> toJson() => {
     'id': id,

@@ -172,7 +172,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
 
     final action = await showDialog<String>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (ctx) => AlertDialog(
         insetPadding: const EdgeInsets.symmetric(horizontal: 60, vertical: 24),
         title: Row(
@@ -208,11 +208,15 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
               ],
             ),
             const SizedBox(height: 4),
+            // Marcador: en "mejor de 3" se muestran los SETS ganados
+            // (2 - 1); en partido único, los puntos del set (21 - 18).
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    '${record.pointsA}',
+                    record.type == MatchType.bestOf3
+                        ? '${record.setsWonA}'
+                        : '${record.pointsA}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 40,
@@ -222,7 +226,9 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                 ),
                 Expanded(
                   child: Text(
-                    '${record.pointsB}',
+                    record.type == MatchType.bestOf3
+                        ? '${record.setsWonB}'
+                        : '${record.pointsB}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 40,
@@ -232,7 +238,28 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            Text(
+              record.headlineLabel,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
+            ),
+            if (record.type == MatchType.bestOf3 &&
+                record.completedSets.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                record.setsDetail,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
             Text(
               '🏆 Ganó ${record.winnerName}',
               textAlign: TextAlign.center,
@@ -243,6 +270,15 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
               'Guardado en el historial ✅',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Toca fuera para volver al tablero',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
             ),
           ],
         ),
@@ -264,9 +300,9 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.sunsetDeep,
                   ),
-                  onPressed: () => Navigator.pop(ctx, 'rematch'),
-                  icon: const Icon(Icons.replay, size: 18),
-                  label: const Text('Revancha'),
+                  onPressed: () => Navigator.pop(ctx, 'history'),
+                  icon: const Icon(Icons.history, size: 18),
+                  label: const Text('Historial'),
                 ),
               ),
             ],
@@ -278,14 +314,11 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     if (action == 'config') {
       _irANuevaConfiguracion();
-    } else {
-      // Revancha con la misma configuración
-      score.startMatch(score.setup);
-      setState(() {
-        _controlsVisible = true;
-      });
-      _programarOcultado();
+    } else if (action == 'history') {
+      // Mantiene el tablero con el partido terminado y abre el historial.
+      widget.onOpenHistory?.call();
     }
+    // action == null (tocó fuera): nos quedamos en el tablero terminado.
   }
 
   Future<void> _editNames(ScoreboardProvider score) async {

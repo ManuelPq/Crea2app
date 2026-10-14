@@ -155,7 +155,6 @@ class _MatchCardState extends State<_MatchCard> {
     final provider = context.read<MatchesProvider>();
     final dateFmt = DateFormat('dd/MM/yy · HH:mm');
     final isMulti = match.type == MatchType.bestOf3;
-    final scoreText = isMulti ? match.setsScore : match.finalScore;
     final sub = Theme.of(context).textTheme.bodySmall?.color;
 
     return Card(
@@ -178,7 +177,7 @@ class _MatchCardState extends State<_MatchCard> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _scoreBox(scoreText, isMulti),
+                        _scoreBox(match.headlineScore, match.headlineLabel),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -204,6 +203,10 @@ class _MatchCardState extends State<_MatchCard> {
                         ),
                       ],
                     ),
+                    if (isMulti) ...[
+                      const SizedBox(height: 10),
+                      _setsBreakdown(match),
+                    ],
                     const SizedBox(height: 6),
                     // Fila 2: acciones + indicador de despliegue
                     Row(
@@ -226,13 +229,13 @@ class _MatchCardState extends State<_MatchCard> {
                     // Detalle desplegable
                     if (_expanded) ...[
                       const Divider(height: 18),
-                      Text(
-                        isMulti
-                            ? match.setsDetail
-                            : '${match.teamA} ${match.pointsA} - ${match.pointsB} ${match.teamB}',
-                        style: TextStyle(fontSize: 13, color: sub),
-                      ),
-                      const SizedBox(height: 6),
+                      if (!isMulti) ...[
+                        Text(
+                          '${match.teamA} ${match.pointsA} - ${match.pointsB} ${match.teamB}',
+                          style: TextStyle(fontSize: 13, color: sub),
+                        ),
+                        const SizedBox(height: 6),
+                      ],
                       Row(
                         children: [
                           Icon(Icons.timer, size: 14, color: sub),
@@ -263,7 +266,7 @@ class _MatchCardState extends State<_MatchCard> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _scoreBox(scoreText, isMulti),
+                _scoreBox(match.headlineScore, match.headlineLabel),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -286,19 +289,22 @@ class _MatchCardState extends State<_MatchCard> {
                         ],
                       ),
                       const SizedBox(height: 4),
+                      if (isMulti) ...[
+                        _setsBreakdown(match),
+                        const SizedBox(height: 6),
+                      ],
                       Row(
                         children: [
-                          Flexible(
-                            child: Text(
-                              isMulti
-                                  ? match.setsDetail
-                                  : '${match.teamA} ${match.pointsA} - ${match.pointsB} ${match.teamB}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 13, color: sub),
+                          if (!isMulti)
+                            Flexible(
+                              child: Text(
+                                '${match.teamA} ${match.pointsA} - ${match.pointsB} ${match.teamB}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 13, color: sub),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
+                          if (!isMulti) const SizedBox(width: 10),
                           Text(
                             '⏱ ${_dur(match.duration)}',
                             style: TextStyle(
@@ -329,7 +335,7 @@ class _MatchCardState extends State<_MatchCard> {
     );
   }
 
-  Widget _scoreBox(String scoreText, bool isMulti) {
+  Widget _scoreBox(String score, String label) {
     return Container(
       width: 92,
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -342,7 +348,7 @@ class _MatchCardState extends State<_MatchCard> {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              scoreText,
+              score,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
@@ -351,11 +357,76 @@ class _MatchCardState extends State<_MatchCard> {
             ),
           ),
           Text(
-            isMulti ? 'sets' : 'puntos',
+            label,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.9),
               fontSize: 10,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Desglose claro set a set: [Set 1  21-18] [Set 2  19-21] [Set 3  15-11].
+  /// El ganador de cada set se resalta con el color de su equipo.
+  Widget _setsBreakdown(MatchRecord match) {
+    final colorA = Color(match.colorA ?? 0xFFE53935);
+    final colorB = Color(match.colorB ?? 0xFF1E6FEB);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (int i = 0; i < match.completedSets.length; i++)
+          _setChip(i + 1, match.completedSets[i], colorA, colorB),
+      ],
+    );
+  }
+
+  Widget _setChip(int n, GameSet s, Color colorA, Color colorB) {
+    final aWon = s.pointsA > s.pointsB;
+    final sub = Theme.of(context).textTheme.bodySmall?.color;
+    final weak = Colors.black.withValues(alpha: 0.45);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.035),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.07)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Set $n',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: sub,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${s.pointsA}',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: aWon ? FontWeight.w900 : FontWeight.w500,
+                  color: aWon ? colorA : weak,
+                ),
+              ),
+              Text(' - ', style: TextStyle(fontSize: 15, color: weak)),
+              Text(
+                '${s.pointsB}',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: !aWon ? FontWeight.w900 : FontWeight.w500,
+                  color: !aWon ? colorB : weak,
+                ),
+              ),
+            ],
           ),
         ],
       ),
