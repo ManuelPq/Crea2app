@@ -1,0 +1,55 @@
+=========================================================
+CUESTIONARIO DE CLASIFICACIÓN DE CONTENIDO
+=========================================================
+Categoría de la app: Deportes
+Correo: crear2app@gmail.com
+
+Preguntas y respuestas (todas "No" salvo donde se indica):
+
+- Violencia o contenido sangriento ............ No
+- Miedo o terror .............................. No
+- Contenido sexual o desnudos ................. No
+- Lenguaje soez ............................... No
+- Drogas, alcohol o tabaco .................... No
+- Apuestas, juegos de azar o simulacion de apuestas ... No
+- Interaccion entre usuarios (chat, foros) .... No
+- Compartir ubicacion del usuario ............. No
+- Compras dentro de la app .................... No
+- Anuncios publicitarios ...................... No
+- La app permite compras o suscripciones ...... No
+- Acceso a internet o web ...... SI (solo abre el enlace de la politica de privacidad)
+
+Resultado esperado: Apto para todos / PEGI 3 / Everyone
+
+
+=========================================================
+SEGURIDAD DE LOS DATOS (Data safety)
+=========================================================
+
+1) ¿Tu app recopila o comparte alguno de los tipos de datos
+   de usuario requeridos?  ................... NO
+
+   (No se envia nada a ningun servidor. Todo se guarda
+    unicamente en el almacenamiento local del telefono.)
+
+2) ¿Los datos se cifran en transito? ........ No aplica
+   (no se transmiten datos)
+
+3) ¿Ofreces a los usuarios la posibilidad de solicitar
+   la eliminacion de sus datos? ............. No aplica
+   (el usuario los borra desinstalando la app o desde
+    la papelera del historial)
+
+4) ¿La app contiene anuncios? ............... NO
+
+5) ¿La app contiene SDKs de terceros que
+   recopilen datos? .......................... NO
+
+Nota: la app NO declara ningun permiso de Android
+(no usa internet, camara, ubicacion, contactos, etc.).
+
+
+=========================================================
+PERMISOS DECLARADOS EN EL ANDROIDMANIFEST
+=========================================================
+(ninguno)

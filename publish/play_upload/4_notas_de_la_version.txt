@@ -1,0 +1,8 @@
+Primera versión de Voley Score.
+
+· Marcador de vóley playa a pantalla completa, con botones grandes.
+· Partido único o al mejor de 3 sets.
+· Cambio de pista automático cada 7 puntos, con animación en 3D.
+· Configuración de puntos por set, set decisivo y colores de equipo.
+· Historial de partidos con fecha, resultado y parciales.
+· Funciona sin conexión y sin registro.
