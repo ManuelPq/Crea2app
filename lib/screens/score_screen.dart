@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 
 import '../models/match_record.dart';
 import '../providers/matches_provider.dart';
@@ -35,10 +37,20 @@ class ScoreScreen extends StatefulWidget {
   State<ScoreScreen> createState() => _ScoreScreenState();
 }
 
-class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
+class _ScoreScreenState extends State<ScoreScreen>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   final SoundService _sound = const SoundService();
   Timer? _ticker;
   bool _configuring = true; // al abrir, primero se configura el partido
+
+  // ---- Cambio de pista: efecto Parallax + giro en 3D ----
+  late final AnimationController _swapCtrl;
+  /// Valor de courtSwitched al empezar la animación (null = en reposo).
+  bool? _fromSwitched;
+
+  // ---- Inclinación 3D con los sensores del móvil (efecto giroscópico) ----
+  final ValueNotifier<Offset> _tilt = ValueNotifier<Offset>(Offset.zero);
+  StreamSubscription<AccelerometerEvent>? _accel;
 
   // Banner flotante de cambio de pista
   bool _switchBanner = false;
@@ -55,11 +67,36 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _swapCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
     _programarOcultado();
+    _escucharSensores();
   }
+
+  /// Inclinación suave del marcador según cómo se sujeta el móvil.
+  /// Si no hay acelerómetro (web, escritorio, emulador) no pasa nada.
+  void _escucharSensores() {
+    try {
+      _accel = accelerometerEventStream(
+        samplingPeriod: SensorInterval.gameInterval,
+      ).listen((e) {
+        // En horizontal el eje X es la gravedad y el eje Y la inclinación
+        // adelante/atrás. Se normaliza a un rango de -1..1.
+        final x = (-e.y / 9.81).clamp(-1.0, 1.0).toDouble();
+        final y = (e.x / 9.81).clamp(-1.0, 1.0).toDouble();
+        _tilt.value = Offset(x, y);
+      }, onError: (_) {}, cancelOnError: true);
+    } catch (_) {
+      // Sin sensores disponibles: el marcador se queda plano.
+    }
+  }
+
+  /// Lanza la animación de intercambio de paneles si el lado ha cambiado.
 
   @override
   void didUpdateWidget(covariant ScoreScreen oldWidget) {
@@ -72,9 +109,13 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _scoreRef?.removeListener(_onScoreChanged);
     _ticker?.cancel();
     _switchTimer?.cancel();
     _controlsTimer?.cancel();
+    _accel?.cancel();
+    _swapCtrl.dispose();
+    _tilt.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -395,6 +436,42 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     _presentEndDialog(score, score.buildRecord());
   }
 
+  // ---------------- Ciclo de vida del cambio de pista ----------------
+  ScoreboardProvider? _scoreRef;
+  bool _reduceMotion = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final score = context.read<ScoreboardProvider>();
+    if (!identical(_scoreRef, score)) {
+      _scoreRef?.removeListener(_onScoreChanged);
+      _scoreRef = score;
+      score.addListener(_onScoreChanged);
+      _fromSwitched = score.courtSwitched;
+    }
+  }
+
+  /// Detecta el intercambio de lados y lanza el efecto Parallax + 3D.
+  void _onScoreChanged() {
+    final score = _scoreRef;
+    if (score == null || !mounted) return;
+    if (_fromSwitched == score.courtSwitched) return;
+    _fromSwitched = score.courtSwitched;
+    _lanzarCambioDePista();
+  }
+
+  void _lanzarCambioDePista() {
+    if (!mounted) return;
+    if (_reduceMotion) {
+      // Sin animación: los paneles aparecen ya en su sitio nuevo.
+      _tilt.value = Offset.zero;
+      return;
+    }
+    _swapCtrl.forward(from: 0);
+  }
+
   // ---------------- Build ----------------
   @override
   Widget build(BuildContext context) {
@@ -412,30 +489,6 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
     }
     final score = context.watch<ScoreboardProvider>();
     final dark = Theme.of(context).brightness == Brightness.dark;
-
-    // Construye el panel de un equipo colocado en un lado concreto.
-    // El contenido se alinea según el LADO (no según el equipo), de modo que
-    // al cambiar de pista los paneles se intercambian de sitio.
-    Widget panelFor(String team, Alignment side) {
-      final isA = team == 'a';
-      return _TeamPanel(
-        label: isA ? 'A' : 'B',
-        name: isA ? score.setup.teamA : score.setup.teamB,
-        points: isA ? score.pointsA : score.pointsB,
-        setsWon: isA ? score.setsWonA : score.setsWonB,
-        gradient: AppGradients.forTeam(
-          Color(isA ? score.setup.colorA : score.setup.colorB),
-        ),
-        align: side,
-        onAdd: () => _onPoint(team, score),
-        onRemove: () => score.removePoint(team),
-        onEditName: () => _editNames(score),
-      );
-    }
-
-    // Al cambiar de pista, los equipos intercambian su lado en la pantalla.
-    final leftTeam = score.courtSwitched ? 'b' : 'a';
-    final rightTeam = score.courtSwitched ? 'a' : 'b';
 
     return Scaffold(
       body: Container(
@@ -462,19 +515,7 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
                         : const SizedBox(width: double.infinity),
                   ),
                   _handleBar(),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: panelFor(leftTeam, Alignment.centerLeft),
-                        ),
-                        _centerStrip(score),
-                        Expanded(
-                          child: panelFor(rightTeam, Alignment.centerRight),
-                        ),
-                      ],
-                    ),
-                  ),
+                  Expanded(child: _board(score)),
                 ],
               ),
               _switchBannerOverlay(score),
@@ -483,6 +524,136 @@ class _ScoreScreenState extends State<ScoreScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  /// Construye el panel de un equipo colocado en un lado concreto.
+  /// El contenido se alinea según el LADO (no según el equipo), de modo que
+  /// al cambiar de pista los paneles se intercambian de sitio.
+  Widget _panelFor(ScoreboardProvider score, String team, Alignment side) {
+    final isA = team == 'a';
+    return _TeamPanel(
+      label: isA ? 'A' : 'B',
+      name: isA ? score.setup.teamA : score.setup.teamB,
+      points: isA ? score.pointsA : score.pointsB,
+      setsWon: isA ? score.setsWonA : score.setsWonB,
+      gradient: AppGradients.forTeam(
+        Color(isA ? score.setup.colorA : score.setup.colorB),
+      ),
+      align: side,
+      onAdd: () => _onPoint(team, score),
+      onRemove: () => score.removePoint(team),
+      onEditName: () => _editNames(score),
+    );
+  }
+
+  /// Tablero con los dos paneles y la franja central.
+  ///
+  /// Al cambiar de pista los paneles se deslizan de un lado al otro con
+  /// efecto Parallax: cada panel viaja a una profundidad distinta (uno pasa
+  /// por delante del otro y del balón) y además giran en 3D. Todo el
+  /// conjunto se inclina con el movimiento del móvil (efecto giroscópico).
+  Widget _board(ScoreboardProvider score) {
+    return AnimatedBuilder(
+      animation: _swapCtrl,
+      builder: (context, _) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            const centerW = 128.0;
+            final panelW = math.max(
+              0.0,
+              (constraints.maxWidth - centerW) / 2,
+            );
+            final maxH = constraints.maxHeight;
+
+            // Progreso del intercambio. Sin animación en curso vale 1, así que
+            // los paneles aparecen quietos en su posición final.
+            final raw = _swapCtrl.isAnimating ? _swapCtrl.value : 1.0;
+            final p = Curves.easeInOutCubic.transform(raw);
+            final arc = math.sin(math.pi * p); // 0 → 1 → 0
+
+            final leftTeam = score.courtSwitched ? 'b' : 'a';
+            final rightTeam = score.courtSwitched ? 'a' : 'b';
+            final travel = panelW + centerW;
+
+            return ValueListenableBuilder<Offset>(
+              valueListenable: _tilt,
+              builder: (context, tilt, __) {
+                return Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0012)
+                    ..rotateY(tilt.dx * 0.055)
+                    ..rotateX(-tilt.dy * 0.045),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Franja central (balón + cambio de pista)
+                      Positioned(
+                        left: panelW,
+                        top: 0,
+                        width: centerW,
+                        height: maxH,
+                        child: Transform.scale(
+                          scale: 1 + 0.08 * arc,
+                          child: _centerStrip(score),
+                        ),
+                      ),
+                      // Panel que termina a la DERECHA (viene de la izquierda)
+                      Positioned(
+                        left: panelW + centerW,
+                        top: 0,
+                        width: panelW,
+                        height: maxH,
+                        child: _panel3d(
+                          dx: -travel * (1 - p),
+                          dz: 46 * arc,
+                          rotateY: (1 - p) * 0.34,
+                          child: _panelFor(
+                            score,
+                            rightTeam,
+                            Alignment.centerRight,
+                          ),
+                        ),
+                      ),
+                      // Panel que termina a la IZQUIERDA (viene de la derecha)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        width: panelW,
+                        height: maxH,
+                        child: _panel3d(
+                          dx: travel * (1 - p),
+                          dz: 82 * arc,
+                          rotateY: -(1 - p) * 0.34,
+                          child: _panelFor(
+                            score,
+                            leftTeam,
+                            Alignment.centerLeft,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Aplica desplazamiento + profundidad + giro Y a un panel.
+  Widget _panel3d({
+    required Widget child,
+    required double dx,
+    required double dz,
+    required double rotateY,
+  }) {
+    final m = Matrix4.identity()..setEntry(3, 2, 0.0014);
+    m.multiply(Matrix4.translationValues(dx, 0, dz));
+    m.multiply(Matrix4.rotationY(rotateY));
+    return Transform(alignment: Alignment.center, transform: m, child: child);
   }
 
   /// Asa flotante que se toca para volver a mostrar la barra superior.

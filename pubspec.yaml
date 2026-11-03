@@ -44,6 +44,8 @@ dependencies:
   # Utilidades
   intl: 0.20.2
   uuid: 4.5.1
+  # Sensores (inclinación 3D del marcador al mover el móvil)
+  sensors_plus: ^6.1.1
 
 dev_dependencies:
   flutter_test:
